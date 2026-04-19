@@ -3,6 +3,7 @@
 normalizar(){
 	texto="$1"
 	texto=$(echo "$texto" | tr '[:upper:]' '[:lower:]')
+	texto=$(echo "$texto" | sed -E 's/ +([.,;:?!])/\1/g')
 	echo "$texto"
 }
 
