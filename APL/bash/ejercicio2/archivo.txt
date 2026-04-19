@@ -1,0 +1,3 @@
+hOla como estas
+quERIa decirte que
+Estoy procesando archivos en bash
