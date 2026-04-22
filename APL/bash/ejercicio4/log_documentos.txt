@@ -1,5 +1,0 @@
-[2026-04-20 16:26:17] Demonio iniciado | Directorio: '/home/cisco/apl-bash-powershell/APL/bash/ejercicio4/documentos' | Palabras: virtualizacion cloud storage
-[2026-04-20 16:26:17] Procesando archivos existentes en '/home/cisco/apl-bash-powershell/APL/bash/ejercicio4/documentos' ...
-[2026-04-20 16:26:17] Operación: EXISTENTE  | Archivo: '/home/cisco/apl-bash-powershell/APL/bash/ejercicio4/documentos/nota.txt' | Palabra: 'cloud' | Tamaño: 30 bytes
-[2026-04-20 16:26:17] 1 archivos existentes procesados.
-[2026-04-20 16:26:24] Operación: CLOSE_WRITE,CLOSE | Archivo: '/home/cisco/apl-bash-powershell/APL/bash/ejercicio4/documentos/nota2.txt' | Palabra: 'cloud' | Tamaño: 30 bytes

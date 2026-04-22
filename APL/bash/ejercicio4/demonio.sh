@@ -14,18 +14,28 @@
 #-------------------------------------------------------#
 
 # demonio.sh - Monitorea un directorio y detecta archivos con palabras clave.
-# Flags: -d/--directorio  --palabras  -l/--log  -k/--kill  -h/--help
-set -euo pipefail
 
-# ---------- UI ----------
-RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[1;33m'; NC=$'\033[0m'
-log_error(){ echo -e "${RED}[ERROR]${NC} $*" >&2; }
-log_info(){  echo -e "${GREEN}[INFO] ${NC}$*"; }
-log_warn(){  echo -e "${YELLOW}[WARN] ${NC}$*"; }
-timestamp(){ date +"%Y-%m-%d %H:%M:%S"; }
+# Ejemplo (parado en ~/):
+#   cd ~/apl-bash-powershell/APL/bash/ejercicio4/
+#   mkdir descargas
+#   ./demonio.sh -d descargas -p password,token,api_key -l monitoreo.log
+#   echo "mi password es 1234" > descargas/credenciales.txt
+#   ./demonio.sh -d descargas -k
+#   cat monitoreo.log
+#   ps aux | grep demonio
 
-# ---------- Help ----------
-show_help() {
+set -euo pipefail # parametros de seguridad que hace que el script frene y muestre el error
+
+
+ROJO=$'\033[0;31m'; VERDE=$'\033[0;32m'; AMARILLO=$'\033[1;33m'; SIN_COLOR=$'\033[0m'
+registrar_error(){ echo -e "${ROJO}[ERROR]${SIN_COLOR} $*" >&2; }
+registrar_info(){  echo -e "${VERDE}[INFO] ${SIN_COLOR}$*"; }
+registrar_aviso(){ echo -e "${AMARILLO}[AVISO]${SIN_COLOR} $*"; }
+marca_tiempo(){ date +"%Y-%m-%d %H:%M:%S"; }
+
+# HELP
+# Flags: -d/--directorio  -p/--palabras  -l/--log  -k/--kill  -h/--help
+mostrar_ayuda() {
   cat <<'EOF'
 Uso:
   Iniciar daemon (OBLIGATORIOS: -d --palabras -l):
@@ -36,199 +46,192 @@ Uso:
 
 Flags:
   -d, --directorio    Ruta del directorio a monitorear
-  --palabras          Palabras clave separadas por comas (ej: password,token,api_key)
+  -p, --palabras      Palabras clave separadas por comas (ej: password,token,api_key)
   -l, --log           Ruta del archivo de log
   -k, --kill          Detiene el daemon del directorio indicado (solo con -d)
   -h, --help          Muestra esta ayuda
 
 Ejemplos:
-  ./demonio.sh -d ../descargas --palabras password,account,unlam -l log.txt
-  ./demonio.sh -d ../descargas --kill
+  ./demonio.sh -d ../descargas -p password,token,api_key -l log.txt
+  ./demonio.sh -d ../descargas -k
 EOF
 }
 
-# ---------- Helpers ----------
-to_abs_path() {
-  local p="${1:-}"; [[ -z "$p" ]] && { echo ""; return 0; }
-  if [[ "$p" = /* ]]; then echo "$p"; else
-    local dir base; dir="$(dirname -- "$p")"; base="$(basename -- "$p")"
-    (cd -- "$dir" 2>/dev/null && printf '%s/%s\n' "$(pwd -P)" "$base") || printf '%s\n' "$p"
+#Convierte una ruta relativa en absoluta.
+ruta_absoluta() {
+  local ruta="${1:-}"; [[ -z "$ruta" ]] && { echo ""; return 0; }
+  if [[ "$ruta" = /* ]]; then echo "$ruta"; else
+    local dir base; dir="$(dirname -- "$ruta")"; base="$(basename -- "$ruta")"
+    (cd -- "$dir" 2>/dev/null && printf '%s/%s\n' "$(pwd -P)" "$base") || printf '%s\n' "$ruta"
   fi
 }
 
-# PID file único por directorio (basado en hash del path absoluto)
-get_pid_file() {
-  echo "/tmp/demonio_$(echo -n "$DIRECTORIO" | md5sum | cut -d' ' -f1).pid"
-}
+# Genera una ruta única en /tmp para guardar el PID del daemon.
+obtener_archivo_pid() {
+  echo "/tmp/demonio_$(echo -n "$DIRECTORIO" | md5sum | cut -d' ' -f1).pid" 
+} #El hash del directorio evita colisiones si se monitorean múltiples directorios.
 
-# Devuelve el PID del daemon si está corriendo, vacío si no
-running_pid() {
-  local pf; pf="$(get_pid_file)"
-  [[ -f "$pf" ]] || return 0
-  local pid; pid="$(cat "$pf")"
-  if kill -0 "$pid" 2>/dev/null; then
-    echo "$pid"
+# Verifica si el daemon está corriendo: devuelve su PID o vacío si no existe
+pid_en_ejecucion() {
+  local archivo_pid; archivo_pid="$(obtener_archivo_pid)"
+  [[ -f "$archivo_pid" ]] || return 0          # no existe el archivo PID → no hay daemon
+  local pid; pid="$(cat "$archivo_pid")"
+  if kill -0 "$pid" 2>/dev/null; then #kill -0 --> este proceso sigue vivo?
+    echo "$pid"                               
   else
-    rm -f "$pf"   # PID file huérfano
+    rm -f "$archivo_pid"                        
   fi
 }
 
-# ---------- Dependencias ----------
-check_dependencies() {
-  local -a missing=()
+# revisa que inotifywait este instalado
+verificar_dependencias() {
+  local -a faltantes=()
   for cmd in grep inotifywait; do
-    command -v "$cmd" &>/dev/null || missing+=("$cmd")
+    command -v "$cmd" &>/dev/null || faltantes+=("$cmd")
   done
-  if ((${#missing[@]})); then
-    log_error "Dependencias faltantes: ${missing[*]}"
-    [[ " ${missing[*]} " == *" inotifywait "* ]] && \
+  if ((${#faltantes[@]})); then
+    log_error "Dependencias faltantes: ${faltantes[*]}"
+    [[ " ${faltantes[*]} " == *" inotifywait "* ]] && \
       log_error "Instalar inotify-tools: sudo apt install inotify-tools"
     exit 1
   fi
 }
 
-# ---------- Log ----------
-log_line() {
-  printf '%s\n' "$1" >> "$LOGFILE"
+print_log() {
+  printf '%s\n' "$1" >> "$ARCHIVO_LOG"
 }
-
-# ---------- Tamaño ----------
-get_file_size() {
+obtener_tamanio_archivo() {
   stat -c%s "$1" 2>/dev/null || echo "?"
 }
 
-# ---------- Escaneo ----------
 declare -a PALABRAS=()
 
-scan_file() {
-  local filepath="$1" operacion="$2"
-  [[ -f "$filepath" ]] || return 0
-  LC_ALL=C grep -Iq . -- "$filepath" 2>/dev/null || return 0  # saltar binarios
-  local size; size="$(get_file_size "$filepath")"
-  local pal
-  for pal in "${PALABRAS[@]}"; do
-    [[ -z "$pal" ]] && continue
-    if LC_ALL=C grep -qi -- "$pal" "$filepath" 2>/dev/null; then
-      log_line "$(printf "[%s] Operación: %-10s | Archivo: '%s' | Palabra: '%s' | Tamaño: %s bytes" \
-        "$(timestamp)" "$operacion" "$filepath" "$pal" "$size")"
+# Busca las palabras clave dentro de un archivo y si las encuentra registra la coincidencia en el log
+escanear_archivo() {
+  local ruta_archivo="$1" operacion="$2"
+  [[ -f "$ruta_archivo" ]] || return 0
+  LC_ALL=C grep -Iq . -- "$ruta_archivo" 2>/dev/null || return 0
+  local tamanio; tamanio="$(obtener_tamanio_archivo "$ruta_archivo")"
+  local palabra
+  for palabra in "${PALABRAS[@]}"; do
+    [[ -z "$palabra" ]] && continue
+    if LC_ALL=C grep -qi -- "$palabra" "$ruta_archivo" 2>/dev/null; then
+      print_log "$(printf "[%s] Operación: %-10s | Archivo: '%s' | Palabra: '%s' | Tamaño: %s bytes" \
+        "$(time_stamp)" "$operacion" "$ruta_archivo" "$palabra" "$tamanio")"
     fi
   done
 }
 
-scan_existing_files() {
-  local count=0
-  log_line "[$(timestamp)] Procesando archivos existentes en '$DIRECTORIO' ..."
-  while IFS= read -r -d '' f; do
-    scan_file "$f" "EXISTENTE"
-    count=$(( count + 1 ))
+# Escanea los archivos que ya estaban en el directorio al momento de iniciar el daemon
+escanear_archivos_existentes() {
+  local cantidad=0
+  print_log "[$(time_stamp)] Procesando archivos existentes en '$DIRECTORIO' ..."
+  while IFS= read -r -d '' archivo; do
+    escanear_archivo "$archivo" "EXISTENTE"
+    cantidad=$(( cantidad + 1 ))
   done < <(find "$DIRECTORIO" -maxdepth 1 -type f -print0 2>/dev/null)
-  log_line "[$(timestamp)] $count archivos existentes procesados."
+  print_log "[$(time_stamp)] $cantidad archivos existentes procesados."
 }
 
-# Función separada para poder usar 'local' correctamente
-# (local solo es válido dentro de funciones, no en un while/pipe)
-process_inotify_event() {
-  local line="$1"
-  local op filepath
-  op="$(awk '{print $1}' <<< "$line")"
-  filepath="$(awk '{$1=""; print substr($0,2)}' <<< "$line")"
-  scan_file "$filepath" "$op"
+# Recibe el evento de inotify, extrae la operación y la ruta del archivo afectado, y lo manda a escanear.
+procesar_evento_inotify() {
+  local linea="$1"
+  local operacion ruta_archivo
+  operacion="$(awk '{print $1}' <<< "$linea")"
+  ruta_archivo="$(awk '{$1=""; print substr($0,2)}' <<< "$linea")"
+  escanear_archivo "$ruta_archivo" "$operacion"
 }
 
-# ---------- Daemon loop ----------
-daemon_loop() {
-  log_line "$(printf "[%s] Demonio iniciado | Directorio: '%s' | Palabras: %s" \
-    "$(timestamp)" "$DIRECTORIO" "${PALABRAS[*]}")"
-
-  scan_existing_files
-
-  # Process substitution < <(...) en lugar de pipe |
-  # Con pipe: inotifywait | while → el while corre en un subshell hijo
-  #           que hereda los args del padre → ps ve DOS procesos con los mismos args
-  # Con < <(): inotifywait corre en un subshell separado, el while queda
-  #            en el proceso principal → ps ve UN solo proceso demonio
-  while IFS= read -r line; do
-    process_inotify_event "$line"
+# Bucle infinito que espera eventos de inotify y los procesa uno a uno
+bucle_daemon() {
+  print_log "$(printf "[%s] Demonio iniciado | Directorio: '%s' | Palabras: %s" \
+    "$(time_stamp)" "$DIRECTORIO" "${PALABRAS[*]}")"
+  escanear_archivos_existentes
+  while IFS= read -r linea; do
+    procesar_evento_inotify "$linea"
   done < <(inotifywait -m -e close_write,moved_to \
              --format '%e %w%f' "$DIRECTORIO" 2>/dev/null)
 }
-
-# ---------- CLI ----------
-DIRECTORIO=""; PALABRAS_STR=""; LOGFILE=""; KILL_MODE=0
+# Parseo de argumentos
+DIRECTORIO=""; PALABRAS_STR=""; ARCHIVO_LOG=""; MODO_KILL=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    -d|--directorio)     DIRECTORIO="$(to_abs_path "${2:-}")"; shift 2;;
-    --palabras)          PALABRAS_STR="${2:-}"; shift 2;;
-    -l|--log)            LOGFILE="$(to_abs_path "${2:-}")"; shift 2;;
-    -k|--kill)           KILL_MODE=1; shift;;
-    -h|--help)           show_help; exit 0;;
+    -d|--directorio)     DIRECTORIO="$(ruta_absoluta "${2:-}")"; shift 2;;
+    -p|--palabras)       PALABRAS_STR="${2:-}"; shift 2;;
+    -l|--log)            ARCHIVO_LOG="$(ruta_absoluta "${2:-}")"; shift 2;;
+    -k|--kill)           MODO_KILL=1; shift;;
+    -h|--help)           mostrar_ayuda; exit 0;;
     --)                  shift; break;;
     -*)                  log_error "Flag desconocido: $1"; exit 1;;
     *)                   log_error "Argumento no reconocido: $1"; exit 1;;
   esac
 done
 
-# ---------- Validaciones ----------
-if (( KILL_MODE )); then
-  [[ -z "$DIRECTORIO" ]] && { log_error "Con -k/--kill debe indicar -d/--directorio"; exit 1; }
-  [[ -n "${PALABRAS_STR:-}" || -n "${LOGFILE:-}" ]] && \
+# Validacion de los argumentos
+if (( MODO_KILL )); then
+  [[ -z "$DIRECTORIO" ]] && \
+    { log_error "Con -k/--kill debe indicar -d/--directorio"; exit 1; }
+  [[ -n "${PALABRAS_STR:-}" || -n "${ARCHIVO_LOG:-}" ]] && \
     { log_error "Con -k/--kill solo se permite -d/--directorio"; exit 1; }
 else
-  [[ -z "$DIRECTORIO" ]]   && { log_error "Falta -d/--directorio"; exit 1; }
-  [[ -z "$PALABRAS_STR" ]] && { log_error "Falta --palabras"; exit 1; }
-  [[ -z "$LOGFILE" ]]      && { log_error "Falta -l/--log"; exit 1; }
+  [[ -z "$DIRECTORIO" ]]   \
+    && { log_error "Falta -d/--directorio"; exit 1; }
+  [[ -z "$PALABRAS_STR" ]] \
+    && { log_error "Falta --palabras"; exit 1; }
+  [[ -z "$ARCHIVO_LOG" ]]  \
+    && { log_error "Falta -l/--log"; exit 1; }
 fi
 
 [[ -d "$DIRECTORIO" ]] || { log_error "El directorio no existe: '$DIRECTORIO'"; exit 1; }
 
-# Parsear palabras clave
+# Parsear palabras pasadas por parametro
 IFS=',' read -ra PALABRAS <<< "$PALABRAS_STR"
 for i in "${!PALABRAS[@]}"; do
   PALABRAS[$i]="$(echo "${PALABRAS[$i]}" | xargs)"
 done
 
-# ---------- Kill mode ----------
-if (( KILL_MODE )); then
-  pid="$(running_pid)"
+# Matar Demonio
+if (( MODO_KILL )); then
+  pid="$(pid_en_ejecucion)"
   if [[ -z "$pid" ]]; then
-    log_warn "No hay daemon corriendo para '$DIRECTORIO'."
+    log_warning "No hay daemon corriendo para '$DIRECTORIO'."
     exit 1
   fi
-  kill -TERM "$pid" 2>/dev/null || true
-  sleep 1
-  kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" 2>/dev/null || true
-  rm -f "$(get_pid_file)"
+  kill -TERM "$pid" 2>/dev/null || true #intenta hacer un sigterm
+  sleep 1 # si en 1 segundo no murio
+  kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" 2>/dev/null || true # mata a la fuerza con SIGKILL
+  rm -f "$(obtener_archivo_pid)"
   log_info "Daemon detenido (PID: $pid)."
   exit 0
 fi
 
-# ---------- Modo daemon (hijo relanzado por nohup) ----------
-# El hijo entra aquí directamente, sin re-truncar el log ni re-chequear deps
+# Modo daemon (hijo relanzado por nohup)
+# Es una señal que el padre le manda al hijo para que sepa que 
+# ya es el proceso en segundo plano y no vuelva a lanzar otro hijo.
 if [[ "${DAEMON_MODE:-0}" == "1" ]]; then
-  trap 'rm -f "$(get_pid_file)"' EXIT   # limpia PID file al salir (éxito, error o señal)
-  daemon_loop
+  trap 'rm -f "$(obtener_archivo_pid)"' EXIT  
+  bucle_daemon
   exit 0
 fi
 
-# ---------- Preparar log ----------
-mkdir -p -- "$(dirname -- "$LOGFILE")" 2>/dev/null || true
-: > "$LOGFILE" 2>/dev/null || { log_error "No puedo escribir en '$LOGFILE'"; exit 1; }
+# Preparar log 
+mkdir -p -- "$(dirname -- "$ARCHIVO_LOG")" 2>/dev/null || true
+: > "$ARCHIVO_LOG" 2>/dev/null || { log_error "No puedo escribir en '$ARCHIVO_LOG'"; exit 1; }
 
-check_dependencies
+verificar_dependencias
 
-# ---------- Prevenir duplicados ----------
-pid="$(running_pid)"
+# Prevenir demonios duplicados
+pid="$(pid_en_ejecucion)"
 if [[ -n "$pid" ]]; then
   log_error "Ya hay un daemon para este directorio (PID: $pid)."; exit 1
 fi
 
-# ---------- Lanzar daemon ----------
+#Lanza el daemon en segundo plano y guarda su PID para poder matarlo después.
 nohup env DAEMON_MODE=1 "$0" \
-  -d "$DIRECTORIO" \
-  --palabras "$PALABRAS_STR" \
-  -l "$LOGFILE" >/dev/null 2>&1 &
-child_pid=$!
-echo "$child_pid" > "$(get_pid_file)"
+ -d "$DIRECTORIO" --palabras "$PALABRAS_STR" -l "$ARCHIVO_LOG" \
+  >/dev/null 2>&1 &
+pid_hijo=$! #obtiene el pid del ultimo proceso lanzado
+echo "$pid_hijo" > "$(obtener_archivo_pid)"
 
-log_info "Daemon iniciado en segundo plano (PID: $child_pid)."
+log_info "Daemon iniciado en segundo plano (PID: $pid_hijo)."
