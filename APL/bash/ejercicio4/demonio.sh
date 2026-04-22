@@ -19,27 +19,28 @@
 #   cd ~/apl-bash-powershell/APL/bash/ejercicio4/
 #   mkdir descargas
 #   ./demonio.sh -d descargas -p password,token,api_key -l monitoreo.log
+#   ./demonio.sh -d descargas -p password,token,api_key -l monitoreo.log   # debe fallar: ya hay un daemon
 #   echo "mi password es 1234" > descargas/credenciales.txt
-#   ./demonio.sh -d descargas -k
 #   cat monitoreo.log
-#   ps aux | grep demonio
+#   ./demonio.sh -d descargas -k
+#   cat monitoreo.log                                                       # verificar que se registró el cierre
 
 set -euo pipefail # parametros de seguridad que hace que el script frene y muestre el error
 
 
 ROJO=$'\033[0;31m'; VERDE=$'\033[0;32m'; AMARILLO=$'\033[1;33m'; SIN_COLOR=$'\033[0m'
-registrar_error(){ echo -e "${ROJO}[ERROR]${SIN_COLOR} $*" >&2; }
-registrar_info(){  echo -e "${VERDE}[INFO] ${SIN_COLOR}$*"; }
-registrar_aviso(){ echo -e "${AMARILLO}[AVISO]${SIN_COLOR} $*"; }
-marca_tiempo(){ date +"%Y-%m-%d %H:%M:%S"; }
+log_error(){ echo -e "${ROJO}[ERROR]${SIN_COLOR} $*" >&2; }
+log_info(){  echo -e "${VERDE}[INFO] ${SIN_COLOR}$*"; }
+log_warning(){ echo -e "${AMARILLO}[AVISO]${SIN_COLOR} $*"; }
+time_stamp(){ date +"%Y-%m-%d %H:%M:%S"; }
 
 # HELP
 # Flags: -d/--directorio  -p/--palabras  -l/--log  -k/--kill  -h/--help
 mostrar_ayuda() {
   cat <<'EOF'
 Uso:
-  Iniciar daemon (OBLIGATORIOS: -d --palabras -l):
-    ./demonio.sh -d <directorio> --palabras <pal1,pal2,...> -l <archivo_log>
+  Iniciar daemon (OBLIGATORIOS: -d -p -l):
+    ./demonio.sh -d <directorio> -p <pal1,pal2,...> -l <archivo_log>
 
   Detener daemon (SOLO -d -k):
     ./demonio.sh -d <directorio> -k
@@ -52,8 +53,12 @@ Flags:
   -h, --help          Muestra esta ayuda
 
 Ejemplos:
-  ./demonio.sh -d ../descargas -p password,token,api_key -l log.txt
-  ./demonio.sh -d ../descargas -k
+  mkdir descargas
+  ./demonio.sh -d descargas -p password,token,api_key -l monitoreo.log
+  ./demonio.sh -d descargas -p password,token,api_key -l monitoreo.log   # debe fallar: ya hay un daemon
+  echo "mi password es 1234" > descargas/credenciales.txt
+  cat monitoreo.log
+  ./demonio.sh -d descargas -k
 EOF
 }
 
@@ -97,7 +102,7 @@ verificar_dependencias() {
   fi
 }
 
-print_log() {
+escribir_linea_log() {
   printf '%s\n' "$1" >> "$ARCHIVO_LOG"
 }
 obtener_tamanio_archivo() {
@@ -116,7 +121,7 @@ escanear_archivo() {
   for palabra in "${PALABRAS[@]}"; do
     [[ -z "$palabra" ]] && continue
     if LC_ALL=C grep -qi -- "$palabra" "$ruta_archivo" 2>/dev/null; then
-      print_log "$(printf "[%s] Operación: %-10s | Archivo: '%s' | Palabra: '%s' | Tamaño: %s bytes" \
+      escribir_linea_log "$(printf "[%s] Operación: %-10s | Archivo: '%s' | Palabra: '%s' | Tamaño: %s bytes" \
         "$(time_stamp)" "$operacion" "$ruta_archivo" "$palabra" "$tamanio")"
     fi
   done
@@ -125,12 +130,12 @@ escanear_archivo() {
 # Escanea los archivos que ya estaban en el directorio al momento de iniciar el daemon
 escanear_archivos_existentes() {
   local cantidad=0
-  print_log "[$(time_stamp)] Procesando archivos existentes en '$DIRECTORIO' ..."
+  escribir_linea_log "[$(time_stamp)] Procesando archivos existentes en '$DIRECTORIO' ..."
   while IFS= read -r -d '' archivo; do
     escanear_archivo "$archivo" "EXISTENTE"
     cantidad=$(( cantidad + 1 ))
   done < <(find "$DIRECTORIO" -maxdepth 1 -type f -print0 2>/dev/null)
-  print_log "[$(time_stamp)] $cantidad archivos existentes procesados."
+  escribir_linea_log "[$(time_stamp)] $cantidad archivos existentes procesados."
 }
 
 # Recibe el evento de inotify, extrae la operación y la ruta del archivo afectado, y lo manda a escanear.
@@ -144,7 +149,7 @@ procesar_evento_inotify() {
 
 # Bucle infinito que espera eventos de inotify y los procesa uno a uno
 bucle_daemon() {
-  print_log "$(printf "[%s] Demonio iniciado | Directorio: '%s' | Palabras: %s" \
+  escribir_linea_log "$(printf "[%s] Demonio iniciado | Directorio: '%s' | Palabras: %s" \
     "$(time_stamp)" "$DIRECTORIO" "${PALABRAS[*]}")"
   escanear_archivos_existentes
   while IFS= read -r linea; do
