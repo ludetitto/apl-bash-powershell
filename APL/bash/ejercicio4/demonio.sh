@@ -39,6 +39,11 @@ time_stamp(){ date +"%Y-%m-%d %H:%M:%S"; }
 # Flags: -d/--directorio  -p/--palabras  -l/--log  -k/--kill  -h/--help
 mostrar_ayuda() {
   cat <<'EOF'
+Descripcion:
+  Script demonio que monitorea un directorio en segundo plano y registra en un
+  log cada vez que se crea o modifica un archivo que contenga alguna de las
+  palabras clave indicadas.
+
 Uso:
   Iniciar daemon (OBLIGATORIOS: -d -p -l):
     ./demonio.sh -d <directorio> -p <pal1,pal2,...> -l <archivo_log>
