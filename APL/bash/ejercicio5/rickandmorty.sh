@@ -1,27 +1,85 @@
-#!/bin/bash
+﻿#!/bin/bash
 
-# Declaración de parámetros globales
+# DeclaraciÃ³n de parÃ¡metros globales
 ID=""
 NOMBRE=""
+CLEAR=false
 
-# Función para validar los parámetros de entrada
+# FunciÃ³n para mostrar el help con formato similar a man page
+mostrar_ayuda() {
+  cat << 'EOF'
+RICKANDMORTY - BÃºsqueda de personajes de Rick and Morty
+
+SINOPSIS
+    rickandmorty.sh [OPCIÃ“N]...
+
+DESCRIPCIÃ“N
+    Consulta la API de Rick and Morty para obtener informaciÃ³n sobre personajes.
+    Los datos se cachean localmente para optimizar las consultas posteriores.
+
+OPCIONES
+    -i, --id ID[,ID]...
+        ID/s de los personajes a buscar. Acepta mÃºltiples IDs separados por comas.
+        Ejemplo: ./rickandmorty.sh --id 1,2,3
+                 ./rickandmorty.sh -i 1
+
+    -n, --nombre NOMBRE[,NOMBRE]...
+        Nombre/s de los personajes a buscar. Acepta mÃºltiples nombres separados 
+        por comas. No es sensible a mayÃºsculas/minÃºsculas.
+        Ejemplo: ./rickandmorty.sh --nombre rick,morty
+                 ./rickandmorty.sh -n rick
+
+    -c, --clear
+        Limpia el cachÃ© de personajes guardado. No puede utilizarse junto con
+        opciones de bÃºsqueda (-i, -n, --id, --nombre).
+        Ejemplo: ./rickandmorty.sh --clear
+
+    -h, --help
+        Muestra este mensaje de ayuda.
+
+EJEMPLOS
+    # BÃºsqueda por ID
+    ./rickandmorty.sh -i 1
+    ./rickandmorty.sh --id 1,2,3
+
+    # BÃºsqueda por nombre
+    ./rickandmorty.sh -n rick
+    ./rickandmorty.sh --nombre rick,morty
+
+    # BÃºsqueda combinada
+    ./rickandmorty.sh -i 1 -n rick
+
+    # Limpiar cachÃ©
+    ./rickandmorty.sh --clear
+
+ARCHIVOS
+    characters_cache.txt
+        Base de datos local de personajes consultados.
+    
+    api_tracking.log
+        Registro de todas las consultas realizadas a la API.
+
+EOF
+}
+
+# FunciÃ³n para validar los parÃ¡metros de entrada
 validar_parametros() {
   if [[ $# -eq 0 ]]; then
     echo "No se han proporcionado argumentos. Use --help para ver las opciones disponibles."
     exit 1
   fi
 
-  while [[ $# -gt 0 ]]; do # $# es el número de argumentos restantes, -gt es mayor que
+  while [[ $# -gt 0 ]]; do # $# es el nÃºmero de argumentos restantes, -gt es mayor que
     case "$1" in
-      --id)
-        ID="${2:-}" # 2:- es el segundo argumento, si no existe se asigna una cadena vacía
+      -i|--id)
+        ID="${2:-}" # 2:- es el segundo argumento, si no existe se asigna una cadena vacÃ­a
         shift 2
         ;; # ;; es el final de un caso en el bloque case
       --id=*) # --id=* es un caso que coincide con cualquier argumento que comience con --id=
         ID="${1#*=}"
         shift
         ;;
-      --nombre)
+      -n|--nombre)
         NOMBRE="${2:-}"
         shift 2
         ;;
@@ -29,19 +87,30 @@ validar_parametros() {
         NOMBRE="${1#*=}"
         shift
         ;;
+      -c|--clear)
+        CLEAR=true
+        shift
+        ;;
       -h|--help)
-        echo "Uso: ./rickandmorty.sh [--id 1,2,3] [--nombre rick,morty]"
+        mostrar_ayuda
         exit 0
         ;;
       *)
-        echo "Parametro no reconocido: $1"
+        echo "ParÃ¡metro no reconocido: $1"
+        echo "Use --help para ver las opciones disponibles."
         exit 1
         ;;
     esac
   done
+
+  # Validar que --clear no se use con opciones de bÃºsqueda
+  if [[ "$CLEAR" == true ]] && ([[ -n "$ID" ]] || [[ -n "$NOMBRE" ]]); then
+    echo "Error: -c/--clear no puede utilizarse junto con opciones de bÃºsqueda (-i, -n, --id, --nombre)"
+    exit 1
+  fi
 }
 
-# Función para crear los archivos necesarios si no existen y agregar encabezado a la caché si es la primera vez
+# FunciÃ³n para crear los archivos necesarios si no existen y agregar encabezado a la cachÃ© si es la primera vez
 crear_recursos() {
   touch 'characters_cache.txt';
   if ! grep -qx "ID|NAME|STATUS|SPECIES|GENDER|ORIGIN|LOCATION|EPISODES" characters_cache.txt; then
@@ -50,13 +119,13 @@ crear_recursos() {
   touch 'api_tracking.log'
 }
 
-# Función para mostrar la información de un personaje
+# FunciÃ³n para mostrar la informaciÃ³n de un personaje
 mostrar_personaje() {
     local id="$1" nombre="$2" status="$3" species="$4" gender="$5" origin="$6" location="$7" episodes="$8"
-    echo "Character info: Id: $id Name: $nombre Status: $status Species: $species Gender: $gender Origin: $origin Location: $location Episodes: $episodes"
+    printf "Character info:\nId: %s\nName: %s\nStatus: %s\nSpecies: %s\nGender: %s\nOrigin: %s\nLocation: %s\nEpisodes: %s\n" "$id" "$nombre" "$status" "$species" "$gender" "$origin" "$location" "$episodes"
 }
 
-# Función para buscar personajes en la caché, una vez que se sabe que fue consultado previamente a la API
+# FunciÃ³n para buscar personajes en la cachÃ©, una vez que se sabe que fue consultado previamente a la API
 buscar_en_cache() {
     local tipo="$1" valor="$2"  # tipo puede ser "ID" o "NOMBRE"
     if [[ "$tipo" == "ID" ]]; then
@@ -76,13 +145,13 @@ buscar_en_cache() {
 # Funcion para obtener personajes por ID
 obtener_personajes_por_id() {
     ID_CLEAN=$(printf '%s' "$ID" | sed 's/[^0-9,]//g')
-    echo "DEBUG: ID_CLEAN='$ID_CLEAN'" >&2
+    #echo "DEBUG: ID_CLEAN='$ID_CLEAN'" >&2
     IFS=',' read -ra IDS <<< "$ID_CLEAN"
 
     IDS_A_PEDIR=()
     
     for id in "${IDS[@]}"; do
-      if grep -q "ID:$id" api_tracking.log; then
+      if grep -q "^${id}|" characters_cache.txt; then
         buscar_en_cache "ID" "$id"
       else
         IDS_A_PEDIR+=("$id")
@@ -101,7 +170,7 @@ obtener_personajes_por_id() {
     fi
 }
 
-# Función para obtener personajes por nombre
+# FunciÃ³n para obtener personajes por nombre
 obtener_personajes_por_nombre() {
     NOMBRES_A_PEDIR=()
     NOMBRE_CLEAN=${NOMBRE//[[:space:]]/}
@@ -129,12 +198,12 @@ obtener_personajes_por_nombre() {
     done
 }
 
-# Función para parsear un campo específico de un objeto JSON
+# FunciÃ³n para parsear un campo especÃ­fico de un objeto JSON
 parsear_campo() {
   local json="$1" campo="$2"
     case "$campo" in
         id) echo "$json" | sed -n 's/.*"id":\([0-9]*\).*/\1/p' ;;
-        name) echo "$json" | sed -n 's/.*"name":"\([^"]*\)".*/\1/p' ;;
+        name) echo "$json" | sed -n 's/.*"id":[0-9]*,"name":"\([^"]*\)".*/\1/p' ;;
         status) echo "$json" | sed -n 's/.*"status":"\([^"]*\)".*/\1/p' ;;
         species) echo "$json" | sed -n 's/.*"species":"\([^"]*\)".*/\1/p' ;;
         gender) echo "$json" | sed -n 's/.*"gender":"\([^"]*\)".*/\1/p' ;;
@@ -145,7 +214,7 @@ parsear_campo() {
     esac
 }
 
-# Función para separar objetos JSON en líneas individuales
+# FunciÃ³n para separar objetos JSON en lÃ­neas individuales
 separar_objetos_json() {
     local input_file="$1" output_file="$2"
     awk 'BEGIN{RS="},{"}
@@ -157,7 +226,7 @@ separar_objetos_json() {
   }' "$input_file" > "$output_file"
 }
 
-# Función para parsear la respuesta de la API y guardar los datos en la caché
+# FunciÃ³n para parsear la respuesta de la API y guardar los datos en la cachÃ©
 parsear_respuesta() {
   if [[ -s temp.txt ]]; then
     separar_objetos_json temp.txt temp_separated.txt
@@ -179,7 +248,7 @@ parsear_respuesta() {
       # Eliminar cualquier entrada previa del mismo ID para evitar duplicados
       grep -v "^${CID}|" characters_cache.txt > characters_cache.tmp && mv characters_cache.tmp characters_cache.txt
       
-      # Guardar la información del personaje en la caché y mostrarla por pantalla
+      # Guardar la informaciÃ³n del personaje en la cachÃ© y mostrarla por pantalla
       echo "$CID|$NAME|$STATUS|$SPECIES|$GENDER|$ORIGIN|$LOCATION|$EPISODES" >> characters_cache.txt
       mostrar_personaje "$CID" "$NAME" "$STATUS" "$SPECIES" "$GENDER" "$ORIGIN" "$LOCATION" "$EPISODES"
             
@@ -187,32 +256,45 @@ parsear_respuesta() {
   fi
 }
 
-# Función para borrar archivos temporales
-borrar_recursos() {
+# FunciÃ³n para borrar archivos temporales
+borrar_temporales() {
   rm -f temp.txt temp_separated.txt
 }
 
-# Ejecución del script
+# FunciÃ³n para mostrar la ruta de los archivos utilizados
+mostrar_path_archivos() {
+  echo ""
+  echo "INFO: Ruta de archivos utilizados:"
+  echo "  CachÃ© de personajes: $(realpath characters_cache.txt)"
+  echo "  Log de consultas a la API: $(realpath api_tracking.log)"
+}
+
+# FunciÃ³n para limpiar el cachÃ©
+limpiar_cache() {
+  rm -f characters_cache.txt api_tracking.log
+  echo "INFO: CachÃ© limpiado correctamente."
+}
+
+# EjecuciÃ³n del script
 validar_parametros "$@"
 crear_recursos
 
-if [[ -n "$ID" ]] && [[ -n "$NOMBRE" ]]; then
-  echo "INFO: Obteniendo personajes por ID: $ID"
+if [[ "$CLEAR" == true ]]; then
+  limpiar_cache
+  exit 0
+elif [[ -n "$ID" ]] && [[ -n "$NOMBRE" ]]; then
+  #echo "INFO: Obteniendo personajes por ID: $ID"
   obtener_personajes_por_id
-  echo "INFO: Obteniendo personajes por nombre: $NOMBRE"
+  #echo "INFO: Obteniendo personajes por nombre: $NOMBRE"
   obtener_personajes_por_nombre
 elif [[ -n "$ID" ]]; then
-  echo "INFO: Obteniendo personajes por ID: $ID"
+  #echo "INFO: Obteniendo personajes por ID: $ID"
   obtener_personajes_por_id
 elif [[ -n "$NOMBRE" ]]; then
-  echo "INFO: Obteniendo personajes por nombre: $NOMBRE"
+  #echo "INFO: Obteniendo personajes por nombre: $NOMBRE"
   obtener_personajes_por_nombre
 fi
 
 parsear_respuesta
-borrar_recursos
-
-echo ""
-echo "Los personajes se han guardado en $PWD/characters_cache.txt"
-echo ""
-echo "Las consultas a la api se han guardado en $PWD/api_tracking.log"
+borrar_temporales
+mostrar_path_archivos
