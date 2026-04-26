@@ -113,33 +113,88 @@ function Mostrar-Personaje {
     Write-Host "  Episodes: $($personaje.episode.Count)"
 }
 
-# Funcion para buscar personajes en la cache, una vez que se sabe que fue consultado previamente a la API
+# Funcion para buscar personajes en la cache o verificar en el log según el tipo
 function Buscar-En-Cache {
     param(
         [string]$tipo,
         [string]$valor
     )
 
-    $contenido = Get-Content "characters_cache.json" -Raw -ErrorAction SilentlyContinue
-    if ([string]::IsNullOrWhiteSpace($contenido) -or $contenido -eq "[]") {
+    if($tipo -eq "ID") {
+        # Para ID: buscar en characters_cache.json
+        $contenido = Get-Content "characters_cache.json" -Raw -ErrorAction SilentlyContinue
+        if ([string]::IsNullOrWhiteSpace($contenido) -or $contenido -eq "[]") {
+            return $false
+        }
+        
+        $parseado = $contenido | ConvertFrom-Json -ErrorAction SilentlyContinue
+        
+        if ($parseado -isnot [array]) {
+            $cache = @($parseado)
+        } else {
+            $cache = $parseado
+        }
+        
+        # Buscar coincidencia exacta de ID
+        $personajes = @()
+        foreach($item in $cache) {
+            if ($item.id -eq [int]$valor) {
+                $personajes += $item
+            }
+        }
+
+        if($personajes.Count -gt 0) {
+            foreach($p in $personajes) { 
+                Mostrar-Personaje $p 
+            }
+            return $true
+        }
+        return $false
+    } else {
+        # Para NOMBRE: verificar en api_tracking.log
+        $logPath = "api_tracking.log"
+        if (-not (Test-Path $logPath)) {
+            return $false
+        }
+        
+        $contenido = Get-Content $logPath -Raw -ErrorAction SilentlyContinue
+        if ([string]::IsNullOrWhiteSpace($contenido)) {
+            return $false
+        }
+        
+        # Verificar si el nombre ya fue consultado (búsqueda de línea exacta)
+        $encontrado = $contenido -match "^NOMBRE:$valor`$"
+        
+        if($encontrado) {
+            # Si fue consultado, obtener del cache
+            $cacheContenido = Get-Content "characters_cache.json" -Raw -ErrorAction SilentlyContinue
+            if ([string]::IsNullOrWhiteSpace($cacheContenido) -or $cacheContenido -eq "[]") {
+                return $false
+            }
+            
+            $parseado = $cacheContenido | ConvertFrom-Json -ErrorAction SilentlyContinue
+            if ($parseado -isnot [array]) {
+                $cache = @($parseado)
+            } else {
+                $cache = $parseado
+            }
+            
+            $personajes = @()
+            foreach($item in $cache) {
+                if ($item.name -like "*$valor*") {
+                    $personajes += $item
+                }
+            }
+            
+            if($personajes.Count -gt 0) {
+                foreach($p in $personajes) { 
+                    Mostrar-Personaje $p 
+                }
+                return $true
+            }
+        }
         return $false
     }
-    
-    $cache = @($contenido | ConvertFrom-Json -ErrorAction SilentlyContinue)
-    
-    if($tipo -eq "ID") {
-        $personajes = @($cache | Where-Object { $_.id -eq [int]$valor })
-    } else {
-        $personajes = @($cache | Where-Object { $_.name -like "*$valor*" })
-    }
-
-    if($personajes.Count -gt 0) {
-        foreach($p in $personajes) { 
-            Mostrar-Personaje $p 
-        }
-        return $true
-    }
-    return $false
 }
 
 # Funcion para guardar personajes en la cache
@@ -166,7 +221,7 @@ function Guardar-En-Cache {
         try {
             $parsed = $contenido | ConvertFrom-Json -ErrorAction Stop
             if ($parsed -is [array]) {
-                $cacheArray = $parsed | Where-Object { $_.id }
+                $cacheArray = @($parsed)
             } elseif ($parsed.id) {
                 $cacheArray = @($parsed)
             }
@@ -175,9 +230,22 @@ function Guardar-En-Cache {
         }
     }
     
-    $cacheArray += $personaje
-    $json = $cacheArray | ConvertTo-Json -Compress
-    $json | Set-Content "characters_cache.json" -Encoding UTF8
+    # Verificar si el personaje ya existe en la cache por ID
+    $existe = $false
+    foreach ($item in $cacheArray) {
+        if ($item.id -eq $personaje.id) {
+            $existe = $true
+            break
+        }
+    }
+    
+    # Solo agregar si no existe
+    if (-not $existe) {
+        $cacheArray += $personaje
+        # Siempre guardar como un array JSON válido
+        $json = $cacheArray | ConvertTo-Json -Compress
+        $json | Set-Content "characters_cache.json" -Encoding UTF8
+    }
 }
 
 # Funcion para obtener personajes por ID
@@ -200,7 +268,6 @@ function Obtener-Personaje-Por-ID {
                 if($response) {
                     Mostrar-Personaje $response
                     Guardar-En-Cache $response
-                    "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] ID:$idItem" | Add-Content "api_tracking.log"
                 }
             }
             catch {
@@ -231,7 +298,7 @@ function Obtener-Personaje-Por-Nombre {
                         Mostrar-Personaje $personaje
                         Guardar-En-Cache $personaje
                     }
-                    "[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')] NOMBRE:$nombre" | Add-Content "api_tracking.log"
+                    "NOMBRE:$nombre" | Add-Content "api_tracking.log"
                 }
             }
             catch {
