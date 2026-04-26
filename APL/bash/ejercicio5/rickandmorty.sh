@@ -1,21 +1,32 @@
 ﻿#!/bin/bash
 
-# DeclaraciÃ³n de parÃ¡metros globales
+# Declaracion de parametros globales
 ID=""
 NOMBRE=""
 CLEAR=false
 
-# FunciÃ³n para mostrar el help con formato similar a man page
+# Establecer un trap para eliminar los archivos temporales al salir del script, sin importar la razon del exit (ya sea por error, interrupcion, o finalizacion normal)
+#trap 'rm -f "/tmp/rickandmorty_$$.txt" "/tmp/rickandmorty_separated_$$.txt"' EXIT
+
+# Funcion para mostrar el help con formato similar a man page
 mostrar_ayuda() {
   cat << 'EOF'
-RICKANDMORTY - Busqueda de personajes de Rick and Morty
+NOMBRE
+    rickandmorty.sh - busca personajes de Rick and Morty.
 
 SINOPSIS
-    rickandmorty.sh [OPCIÃ“N]...
+    rickandmorty.sh [OPCIONES]
 
 DESCRIPCION
-    Consulta la API de Rick and Morty para obtener informaciÃ³n sobre personajes.
-    Los datos se cachean localmente para optimizar las consultas posteriores.
+    Consulta la API de Rick and Morty para obtener informacion sobre personajes.
+    Los datos se cachean localmente en el directorio actual para optimizar las consultas posteriores.
+
+ARCHIVOS
+    characters_cache.txt
+        Base de datos local de personajes consultados.
+    
+    api_tracking.log
+        Registro de todas las consultas realizadas a la API.
 
 OPCIONES
     -i, --id [IDs]
@@ -30,8 +41,8 @@ OPCIONES
                  ./rickandmorty.sh -n rick
 
     -c, --clear
-        Limpia el cachÃ© de personajes guardado. No puede utilizarse junto con
-        opciones de bÃºsqueda (-i, -n, --id, --nombre).
+        Limpia el cache de personajes guardado. No puede utilizarse junto con
+        opciones de busqueda (-i, -n, --id, --nombre).
         Ejemplo: ./rickandmorty.sh --clear
 
     -h, --help
@@ -49,15 +60,8 @@ EJEMPLOS
     # Busqueda combinada
     ./rickandmorty.sh -i 1 -n rick
 
-    # Limpiar cachÃ©
+    # Limpiar cache
     ./rickandmorty.sh --clear
-
-ARCHIVOS
-    characters_cache.txt
-        Base de datos local de personajes consultados.
-    
-    api_tracking.log
-        Registro de todas las consultas realizadas a la API.
 
 EOF
 }
@@ -72,10 +76,10 @@ validar_parametros() {
   while [[ $# -gt 0 ]]; do # $# es el nÃºmero de argumentos restantes, -gt es mayor que
     case "$1" in
       -i|--id)
-        ID="${2:-}" # 2:- es el segundo argumento, si no existe se asigna una cadena vacÃ­a
-        shift 2
+        ID="${2:-}" # 2:- es el segundo argumento, si no existe se asigna una cadena vaci­a
+        shift 2 # $1 y $2 se eliminan, entonces el siguiente argumento se convierte en $1 y $2 (-n [NOMBRE] si lo hubiera)
         ;; # ;; es el final de un caso en el bloque case
-      --id=*) # --id=* es un caso que coincide con cualquier argumento que comience con --id=
+      --id=*) # caso --id="ID1,ID2,ID3"
         ID="${1#*=}"
         shift
         ;;
@@ -96,21 +100,21 @@ validar_parametros() {
         exit 0
         ;;
       *)
-        echo "ParÃ¡metro no reconocido: $1"
+        echo "Parametro no reconocido: $1"
         echo "Use --help para ver las opciones disponibles."
         exit 1
         ;;
     esac
   done
 
-  # Validar que --clear no se use con opciones de bÃºsqueda
+  # Validar que --clear no se use con opciones de busqueda
   if [[ "$CLEAR" == true ]] && ([[ -n "$ID" ]] || [[ -n "$NOMBRE" ]]); then
-    echo "Error: -c/--clear no puede utilizarse junto con opciones de bÃºsqueda (-i, -n, --id, --nombre)"
+    echo "Error: -c/--clear no puede utilizarse junto con opciones de busqueda (-i, -n, --id, --nombre)"
     exit 1
   fi
 }
 
-# Funcion para crear los archivos necesarios si no existen y agregar encabezado a la cachÃ© si es la primera vez
+# Funcion para crear los archivos necesarios si no existen y agregar encabezado a la cache si es la primera vez
 crear_recursos() {
   touch 'characters_cache.txt';
   if ! grep -qx "ID|NAME|STATUS|SPECIES|GENDER|ORIGIN|LOCATION|EPISODES" characters_cache.txt; then
@@ -125,16 +129,16 @@ mostrar_personaje() {
     printf "Character info:\nId: %s\nName: %s\nStatus: %s\nSpecies: %s\nGender: %s\nOrigin: %s\nLocation: %s\nEpisodes: %s\n" "$id" "$nombre" "$status" "$species" "$gender" "$origin" "$location" "$episodes"
 }
 
-# Funcion para buscar personajes en la cachÃ©, una vez que se sabe que fue consultado previamente a la API
+# Funcion para buscar personajes en la cache, una vez que se sabe que fue consultado previamente a la API
 buscar_en_cache() {
-    local tipo="$1" valor="$2"  # tipo puede ser "ID" o "NOMBRE"
+    local tipo="$1" valor="$2"
     if [[ "$tipo" == "ID" ]]; then
         grep "^${valor}|" characters_cache.txt | while IFS='|' read -r CID NAME STATUS SPECIES GENDER ORIGIN LOCATION EPISODES; do
             [[ -z "$CID" ]] || [[ "$CID" == "ID" ]] && continue
             mostrar_personaje "$CID" "$NAME" "$STATUS" "$SPECIES" "$GENDER" "$ORIGIN" "$LOCATION" "$EPISODES"
         done
     else  # "$tipo" == "NOMBRE"
-        grep -i "^[0-9]*|$valor|\|^[0-9]*|[^|]*$valor" characters_cache.txt | while IFS='|' read -r CID NAME STATUS SPECIES GENDER ORIGIN LOCATION EPISODES; do
+        grep -i "^[0-9]*|[^|]*$valor" characters_cache.txt | while IFS='|' read -r CID NAME STATUS SPECIES GENDER ORIGIN LOCATION EPISODES; do
             [[ -z "$CID" ]] || [[ "$CID" == "ID" ]] && continue
             mostrar_personaje "$CID" "$NAME" "$STATUS" "$SPECIES" "$GENDER" "$ORIGIN" "$LOCATION" "$EPISODES"
         done
@@ -161,7 +165,7 @@ obtener_personajes_por_id() {
     if [[ ${#IDS_A_PEDIR[@]} -gt 0 ]]; then
       IDS_QUERY=$(IFS=,; echo "${IDS_A_PEDIR[*]}")
       # echo "INFO: Consultando API para IDs: $IDS_QUERY"
-      curl -fsS "https://rickandmortyapi.com/api/character/$IDS_QUERY" > 'temp.txt'
+      curl -fsS "https://rickandmortyapi.com/api/character/$IDS_QUERY" > "/tmp/rickandmorty_$$.txt"
       
       # Loguear cada ID consultado
       for id in "${IDS_A_PEDIR[@]}"; do
@@ -188,10 +192,10 @@ obtener_personajes_por_nombre() {
       
     for nombre in "${NOMBRES_A_PEDIR[@]}"; do
       # echo "INFO: Consultando API para nombre: $nombre"
-      if [[ -s temp.txt ]]; then
-        echo "," >> 'temp.txt'
+      if [[ -s /tmp/rickandmorty_$$.txt ]]; then
+        echo "," >> '/tmp/rickandmorty_$$.txt'
       fi
-      curl -fsS "https://rickandmortyapi.com/api/character/?name=$nombre" >> 'temp.txt'
+      curl -fsS "https://rickandmortyapi.com/api/character/?name=$nombre" >> "/tmp/rickandmorty_$$.txt"
       
       # Loguear cada nombre consultado
       echo "[$(date '+%Y-%m-%d %H:%M:%S')] NOMBRE:$nombre" >> api_tracking.log
@@ -228,8 +232,8 @@ separar_objetos_json() {
 
 # Funcion para parsear la respuesta de la API y guardar los datos en la caché
 parsear_respuesta() {
-  if [[ -s temp.txt ]]; then
-    separar_objetos_json temp.txt temp_separated.txt
+  if [[ -s /tmp/rickandmorty_$$.txt ]]; then
+    separar_objetos_json /tmp/rickandmorty_$$.txt /tmp/rickandmorty_separated_$$.txt
 
     while IFS= read -r json_line; do
       [[ -z "$json_line" ]] && continue 
@@ -252,27 +256,27 @@ parsear_respuesta() {
       echo "$CID|$NAME|$STATUS|$SPECIES|$GENDER|$ORIGIN|$LOCATION|$EPISODES" >> characters_cache.txt
       mostrar_personaje "$CID" "$NAME" "$STATUS" "$SPECIES" "$GENDER" "$ORIGIN" "$LOCATION" "$EPISODES"
             
-    done < temp_separated.txt
+    done < /tmp/rickandmorty_separated_$$.txt
   fi
 }
 
 # Funcion para borrar archivos temporales
 borrar_temporales() {
-  rm -f temp.txt temp_separated.txt
+  rm -f /tmp/rickandmorty_$$.txt /tmp/rickandmorty_separated_$$.txt
 }
 
 # Funcion para mostrar la ruta de los archivos utilizados
 mostrar_path_archivos() {
   echo ""
   echo "INFO: Ruta de archivos utilizados:"
-  echo "  CachÃ© de personajes: $(realpath characters_cache.txt)"
+  echo "  Cache de personajes: $(realpath characters_cache.txt)"
   echo "  Log de consultas a la API: $(realpath api_tracking.log)"
 }
 
 # Funcion para limpiar el cache
 limpiar_cache() {
   rm -f characters_cache.txt api_tracking.log
-  echo "INFO: CachÃ© limpiado correctamente."
+  echo "INFO: Cache limpiado correctamente."
 }
 
 # Ejecucion del script
@@ -296,5 +300,5 @@ elif [[ -n "$NOMBRE" ]]; then
 fi
 
 parsear_respuesta
-borrar_temporales
+#borrar_temporales
 mostrar_path_archivos
