@@ -8,22 +8,22 @@ CLEAR=false
 # FunciÃ³n para mostrar el help con formato similar a man page
 mostrar_ayuda() {
   cat << 'EOF'
-RICKANDMORTY - BÃºsqueda de personajes de Rick and Morty
+RICKANDMORTY - Busqueda de personajes de Rick and Morty
 
 SINOPSIS
     rickandmorty.sh [OPCIÃ“N]...
 
-DESCRIPCIÃ“N
+DESCRIPCION
     Consulta la API de Rick and Morty para obtener informaciÃ³n sobre personajes.
     Los datos se cachean localmente para optimizar las consultas posteriores.
 
 OPCIONES
-    -i, --id ID[,ID]...
+    -i, --id [IDs]
         ID/s de los personajes a buscar. Acepta mÃºltiples IDs separados por comas.
         Ejemplo: ./rickandmorty.sh --id 1,2,3
                  ./rickandmorty.sh -i 1
 
-    -n, --nombre NOMBRE[,NOMBRE]...
+    -n, --nombre [NOMBRES]
         Nombre/s de los personajes a buscar. Acepta mÃºltiples nombres separados 
         por comas. No es sensible a mayÃºsculas/minÃºsculas.
         Ejemplo: ./rickandmorty.sh --nombre rick,morty
@@ -38,15 +38,15 @@ OPCIONES
         Muestra este mensaje de ayuda.
 
 EJEMPLOS
-    # BÃºsqueda por ID
+    # Busqueda por ID
     ./rickandmorty.sh -i 1
     ./rickandmorty.sh --id 1,2,3
 
-    # BÃºsqueda por nombre
+    # Busqueda por nombre
     ./rickandmorty.sh -n rick
     ./rickandmorty.sh --nombre rick,morty
 
-    # BÃºsqueda combinada
+    # Busqueda combinada
     ./rickandmorty.sh -i 1 -n rick
 
     # Limpiar cachÃ©
@@ -62,7 +62,7 @@ ARCHIVOS
 EOF
 }
 
-# FunciÃ³n para validar los parÃ¡metros de entrada
+# Funcion para validar los parametros de entrada
 validar_parametros() {
   if [[ $# -eq 0 ]]; then
     echo "No se han proporcionado argumentos. Use --help para ver las opciones disponibles."
@@ -110,7 +110,7 @@ validar_parametros() {
   fi
 }
 
-# FunciÃ³n para crear los archivos necesarios si no existen y agregar encabezado a la cachÃ© si es la primera vez
+# Funcion para crear los archivos necesarios si no existen y agregar encabezado a la cachÃ© si es la primera vez
 crear_recursos() {
   touch 'characters_cache.txt';
   if ! grep -qx "ID|NAME|STATUS|SPECIES|GENDER|ORIGIN|LOCATION|EPISODES" characters_cache.txt; then
@@ -119,13 +119,13 @@ crear_recursos() {
   touch 'api_tracking.log'
 }
 
-# FunciÃ³n para mostrar la informaciÃ³n de un personaje
+# Funcion para mostrar la informacion de un personaje
 mostrar_personaje() {
     local id="$1" nombre="$2" status="$3" species="$4" gender="$5" origin="$6" location="$7" episodes="$8"
     printf "Character info:\nId: %s\nName: %s\nStatus: %s\nSpecies: %s\nGender: %s\nOrigin: %s\nLocation: %s\nEpisodes: %s\n" "$id" "$nombre" "$status" "$species" "$gender" "$origin" "$location" "$episodes"
 }
 
-# FunciÃ³n para buscar personajes en la cachÃ©, una vez que se sabe que fue consultado previamente a la API
+# Funcion para buscar personajes en la cachÃ©, una vez que se sabe que fue consultado previamente a la API
 buscar_en_cache() {
     local tipo="$1" valor="$2"  # tipo puede ser "ID" o "NOMBRE"
     if [[ "$tipo" == "ID" ]]; then
@@ -170,7 +170,7 @@ obtener_personajes_por_id() {
     fi
 }
 
-# FunciÃ³n para obtener personajes por nombre
+# Funcion para obtener personajes por nombre
 obtener_personajes_por_nombre() {
     NOMBRES_A_PEDIR=()
     NOMBRE_CLEAN=${NOMBRE//[[:space:]]/}
@@ -198,7 +198,7 @@ obtener_personajes_por_nombre() {
     done
 }
 
-# FunciÃ³n para parsear un campo especÃ­fico de un objeto JSON
+# Funcion para parsear un campo especifico de un objeto JSON
 parsear_campo() {
   local json="$1" campo="$2"
     case "$campo" in
@@ -214,7 +214,7 @@ parsear_campo() {
     esac
 }
 
-# FunciÃ³n para separar objetos JSON en lÃ­neas individuales
+# Funcion para separar objetos JSON en lineas individuales
 separar_objetos_json() {
     local input_file="$1" output_file="$2"
     awk 'BEGIN{RS="},{"}
@@ -226,7 +226,7 @@ separar_objetos_json() {
   }' "$input_file" > "$output_file"
 }
 
-# FunciÃ³n para parsear la respuesta de la API y guardar los datos en la cachÃ©
+# Funcion para parsear la respuesta de la API y guardar los datos en la caché
 parsear_respuesta() {
   if [[ -s temp.txt ]]; then
     separar_objetos_json temp.txt temp_separated.txt
@@ -256,12 +256,12 @@ parsear_respuesta() {
   fi
 }
 
-# FunciÃ³n para borrar archivos temporales
+# Funcion para borrar archivos temporales
 borrar_temporales() {
   rm -f temp.txt temp_separated.txt
 }
 
-# FunciÃ³n para mostrar la ruta de los archivos utilizados
+# Funcion para mostrar la ruta de los archivos utilizados
 mostrar_path_archivos() {
   echo ""
   echo "INFO: Ruta de archivos utilizados:"
@@ -269,13 +269,13 @@ mostrar_path_archivos() {
   echo "  Log de consultas a la API: $(realpath api_tracking.log)"
 }
 
-# FunciÃ³n para limpiar el cachÃ©
+# Funcion para limpiar el cache
 limpiar_cache() {
   rm -f characters_cache.txt api_tracking.log
   echo "INFO: CachÃ© limpiado correctamente."
 }
 
-# EjecuciÃ³n del script
+# Ejecucion del script
 validar_parametros "$@"
 crear_recursos
 
