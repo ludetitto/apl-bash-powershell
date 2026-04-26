@@ -163,7 +163,13 @@ function Buscar-En-Cache {
         }
         
         # Verificar si el nombre ya fue consultado (búsqueda de línea exacta)
-        $encontrado = $contenido -match "^NOMBRE:$valor`$"
+        $logs = Get-Content "api_tracking.log" | ForEach-Object {
+            $_ | ConvertFrom-Json
+        }
+
+        $encontrado = $logs | Where-Object {
+            $_.tipo -eq "nombre" -and $_.valor -eq $valor
+        }
         
         if($encontrado) {
             # Si fue consultado, obtener del cache
@@ -269,6 +275,15 @@ function Obtener-Personaje-Por-ID {
                     Mostrar-Personaje $response
                     Guardar-En-Cache $response
                 }
+                    
+                $log = @{
+                    timestamp = (Get-Date).ToString("o")
+                    tipo = "ID"
+                    valor = $idItem
+                    endpoint = "/api/character/$idItem"
+                }
+
+                $log | ConvertTo-Json -Compress | Add-Content "api_tracking.log"
             }
             catch {
                 Write-Host "Error al obtener personaje con ID $idItem : $_"
@@ -298,7 +313,15 @@ function Obtener-Personaje-Por-Nombre {
                         Mostrar-Personaje $personaje
                         Guardar-En-Cache $personaje
                     }
-                    "NOMBRE:$nombre" | Add-Content "api_tracking.log"
+                    
+                    $log = @{
+                        timestamp = (Get-Date).ToString("o")
+                        tipo = "nombre"
+                        valor = $nombre
+                        endpoint = "/api/character/?name=$nombre"
+                    }
+
+                    $log | ConvertTo-Json -Compress | Add-Content "api_tracking.log"
                 }
             }
             catch {
