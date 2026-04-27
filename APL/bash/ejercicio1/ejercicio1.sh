@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+
 mostrar_ayuda() {
   cat << EOF
 Uso:
