@@ -19,7 +19,7 @@ El programa toma como referencia la primera fila del archivo para identificar lo
 
 **Uso básico:**
 ```bash
-./ejercicio1.sh -a clientes.csv -f Apellido -b "Perez" -s Saldo
+./procesarCSV.sh -a clientes.csv -f Apellido -b "Perez" -s Saldo
 ```
 
 ### Ejercicio 2
