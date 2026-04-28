@@ -192,7 +192,7 @@ END {
 
   if (contar == "true") {
     if (c == 0) {
-      print "Resultados:\nNo se encontraron registros"
+      print "Resultados:\nNo se encontraron registros\n"
     } else {
 		if (filtro != "") {
 		  printf "Resultados:\nCantidad de registros = %d\n", c
@@ -200,9 +200,9 @@ END {
     }
   } else {
     if (c == 0) {
-      print "Resultado: no se encontraron registros para sumar"
+      print "Resultados:\nNo se encontraron registros para sumar\n"
     } else {
-      printf  "Resultado: suma total = %.2f\n", s
+      printf  "Resultados:\nSuma total = %.2f\n", s
     }
   }
 
