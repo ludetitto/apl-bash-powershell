@@ -1,0 +1,5 @@
+¿ HOla como estas?
+
+QuERIa, decirte que...
+Estoy ¿procesando archivos en bash?
+
