@@ -1,3 +1,4 @@
- hOla como estas ?
+¿ hOla como estas
+
 quERIa , decirte que.......
-Estoy procesando archivos en bash
+Estoy ¿procesando archivos en bash
