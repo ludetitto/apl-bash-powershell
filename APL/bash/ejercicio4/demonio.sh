@@ -16,20 +16,11 @@
 
 set -euo pipefail
 
-# =============================================================================
-# COLORES Y FUNCIONES DE SALIDA
-# Definidas primero porque las usa todo lo que viene después
-# =============================================================================
-
 RED=$'\033[0;31m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[1;33m'; NC=$'\033[0m'
 log_error(){ echo -e "${RED}[ERROR]${NC} $*" >&2; }
 log_info(){  echo -e "${GREEN}[INFO] ${NC}$*"; }
 log_warn(){  echo -e "${YELLOW}[WARN] ${NC}$*"; }
 timestamp(){ date +"%Y-%m-%d %H:%M:%S"; }
-
-# =============================================================================
-# AYUDA
-# =============================================================================
 
 show_help() {
   cat <<'EOF'
@@ -61,11 +52,6 @@ Ejemplos:
   ./demonio.sh -d descargas -k
 EOF
 }
-
-# =============================================================================
-# FUNCIONES AUXILIARES
-# Resuelven paths, manejan el PID file y verifican dependencias
-# =============================================================================
 
 # Convierte una ruta relativa a absoluta sin depender de realpath
 to_abs_path() {
@@ -105,11 +91,6 @@ check_dependencies() {
     exit 1
   fi
 }
-
-# =============================================================================
-# FUNCIONES DE MONITOREO
-# Escriben en el log y escanean archivos buscando palabras clave
-# =============================================================================
 
 log_line() {
   printf '%s\n' "$1" >> "$LOGFILE"
@@ -169,10 +150,7 @@ daemon_loop() {
              --format '%e %w%f' "$DIRECTORIO" 2>/dev/null)
 }
 
-# =============================================================================
 # PARSEO DE ARGUMENTOS
-# =============================================================================
-
 DIRECTORIO=""; PALABRAS_STR=""; LOGFILE=""; KILL_MODE=0
 
 while [[ $# -gt 0 ]]; do
@@ -188,10 +166,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-# =============================================================================
 # VALIDACIONES
-# =============================================================================
-
 if (( KILL_MODE )); then
   [[ -z "$DIRECTORIO" ]] && { log_error "Con -k/--kill tenés que indicar -d/--directorio"; exit 1; }
   [[ -n "${PALABRAS_STR:-}" || -n "${LOGFILE:-}" ]] && \
@@ -213,15 +188,7 @@ for i in "${!PALABRAS[@]}"; do
   PALABRAS[$i]="$(echo "${PALABRAS[$i]}" | xargs)"
 done
 
-# =============================================================================
-# FLUJO PRINCIPAL
-# A partir de acá el script toma uno de tres caminos:
-#   1. --kill  → mata el demonio y termina
-#   2. DAEMON_MODE=1 → es el proceso hijo, entra al loop de monitoreo
-#   3. Normal → prepara todo y lanza el hijo en segundo plano
-# =============================================================================
-
-# --- Camino 1: matar el demonio ---
+#  matar el demonio 
 if (( KILL_MODE )); then
   pid="$(running_pid)"
   if [[ -z "$pid" ]]; then
@@ -236,24 +203,25 @@ if (( KILL_MODE )); then
   exit 0
 fi
 
-# --- Camino 2: soy el proceso demonio (relanzado por nohup con DAEMON_MODE=1) ---
+# proceso demonio (relanzado por nohup con DAEMON_MODE=1) ---
 if [[ "${DAEMON_MODE:-0}" == "1" ]]; then
   trap 'rm -f "$(get_pid_file)"' EXIT   # limpia el PID file al salir por cualquier motivo
   daemon_loop
   exit 0
 fi
 
-# --- Camino 3: arranque normal, preparo todo y lanzo el hijo ---
+# crea el archivo de log 
 mkdir -p -- "$(dirname -- "$LOGFILE")" 2>/dev/null || true
 : > "$LOGFILE" 2>/dev/null || { log_error "No puedo escribir en '$LOGFILE'"; exit 1; }
 
 check_dependencies
-
+# valida si ya hay un demonio corriendo
 pid="$(running_pid)"
 if [[ -n "$pid" ]]; then
   log_error "Ya hay un demonio para este directorio (PID: $pid)."; exit 1
 fi
 
+# se crea el demonio y guarda su pid
 nohup env DAEMON_MODE=1 "$0" \
  -d "$DIRECTORIO" --palabras "$PALABRAS_STR" -l "$LOGFILE" \
   >/dev/null 2>&1 &

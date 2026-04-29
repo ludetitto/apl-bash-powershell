@@ -75,13 +75,10 @@ $ErrorActionPreference = 'Stop'
 # Capturar la ruta del script aquí (dentro de funciones $PSCommandPath puede variar)
 $rutaScript = $PSCommandPath
 
-# ---------- UI ----------
 function registrar_error { param([string]$mensaje) Write-Host "[ERROR] $mensaje" -ForegroundColor Red }
 function registrar_info  { param([string]$mensaje) Write-Host "[INFO]  $mensaje" -ForegroundColor Green }
 function registrar_aviso { param([string]$mensaje) Write-Host "[AVISO] $mensaje" -ForegroundColor Yellow }
 function marca_tiempo    { (Get-Date).ToString('yyyy-MM-dd HH:mm:ss') }
-
-# ---------- Auxiliares ----------
 
 # Convierte una ruta relativa en absoluta
 function ruta_absoluta {
@@ -114,19 +111,44 @@ function pid_del_daemon_activo {
     }
 }
 
-# ---------- Log ----------
+# Log
 function escribir_linea_log {
     param([string]$linea, [string]$rutaLog)
     Add-Content -LiteralPath $rutaLog -Value $linea -Encoding UTF8
 }
 
-# ---------- Tamaño ----------
+# Inicializa el daemon en segundo plano y guarda su PID para poder matarlo después
+function lanzar_daemon {
+    param([string]$rutaDirectorio, [string]$palabrasCrudas, [string]$rutaLog)
+
+    # Detectar el ejecutable de PowerShell disponible
+    $ejecutablePwsh = Get-Command pwsh -ErrorAction SilentlyContinue
+    $ejecutable = if ($ejecutablePwsh) { $ejecutablePwsh.Source } else { 'powershell' }
+
+    $argumentos = @(
+        '-NoProfile', '-ExecutionPolicy', 'Bypass',
+        '-File', "`"$rutaScript`"",
+        '-Directorio', "`"$rutaDirectorio`"",
+        '-Palabras', "`"$palabrasCrudas`"",
+        '-Log', "`"$rutaLog`"",
+        '-ModoDemonio'
+    )
+
+    # -FilePath: ejecutable a lanzar (pwsh o powershell)
+    # -ArgumentList: argumentos que recibe el proceso hijo
+    # -PassThru: devuelve el objeto del proceso para poder leer su PID
+    $procesoDemonio    = Start-Process -FilePath $ejecutable -ArgumentList $argumentos -PassThru
+    $pidProcesoDemonio = $procesoDemonio.Id
+
+    # Guardar el PID del hijo para poder matarlo después con -Kill
+    $pidProcesoDemonio | Out-File -FilePath (ruta_archivo_pid $rutaDirectorio) -Encoding ascii -Force
+    registrar_info "Daemon iniciado en segundo plano (PID: $pidProcesoDemonio)."
+}
+
 function obtener_tamanio_en_bytes {
     param([string]$rutaArchivo)
     try { return (Get-Item -LiteralPath $rutaArchivo).Length } catch { return '?' }
 }
-
-# ---------- Escaneo ----------
 
 # Verifica si un archivo es binario leyendo sus primeros bytes
 function es_archivo_binario {
@@ -176,8 +198,6 @@ function escanear_archivos_preexistentes {
     escribir_linea_log ("[{0}] {1} archivos existentes procesados." -f (marca_tiempo), $cantidadArchivos) $rutaLog
 }
 
-# ---------- Bucle del daemon ----------
-
 # Bucle infinito que espera eventos de FileSystemWatcher y los procesa uno a uno
 function iniciar_bucle_de_monitoreo {
     param([string]$rutaDirectorio, [string[]]$palabrasClave, [string]$rutaLog)
@@ -210,7 +230,7 @@ function iniciar_bucle_de_monitoreo {
     escribir_linea_log ("[{0}] Demonio detenido." -f (marca_tiempo)) $rutaLog
 }
 
-# ---------- Matar daemon ----------
+# Matar Demonio
 function detener_daemon {
     param([string]$rutaDirectorio)
     $pidActivo = pid_del_daemon_activo $rutaDirectorio
@@ -228,36 +248,7 @@ function detener_daemon {
     }
 }
 
-# ---------- Lanzar daemon ----------
-
-# Lanza el daemon en segundo plano y guarda su PID para poder matarlo después
-function lanzar_daemon {
-    param([string]$rutaDirectorio, [string]$palabrasCrudas, [string]$rutaLog)
-
-    # Detectar el ejecutable de PowerShell disponible
-    $ejecutablePwsh = Get-Command pwsh -ErrorAction SilentlyContinue
-    $ejecutable = if ($ejecutablePwsh) { $ejecutablePwsh.Source } else { 'powershell' }
-
-    $argumentos = @(
-        '-NoProfile', '-ExecutionPolicy', 'Bypass',
-        '-File', "`"$rutaScript`"",
-        '-Directorio', "`"$rutaDirectorio`"",
-        '-Palabras', "`"$palabrasCrudas`"",
-        '-Log', "`"$rutaLog`"",
-        '-ModoDemonio'
-    )
-
-    $procesoDemonio    = Start-Process -FilePath $ejecutable -ArgumentList $argumentos -PassThru
-    $pidProcesoDemonio = $procesoDemonio.Id
-
-    # Guardar el PID del hijo para poder matarlo después con -Kill
-    $pidProcesoDemonio | Out-File -FilePath (ruta_archivo_pid $rutaDirectorio) -Encoding ascii -Force
-    registrar_info "Daemon iniciado en segundo plano (PID: $pidProcesoDemonio)."
-}
-
-# ---------- Main ----------
-
-# Convertir rutas a absolutas
+# Convertir rutas a absolutas (param ya validó que el directorio existe)
 $Directorio = ruta_absoluta $Directorio
 
 # Modo kill: detener el daemon
@@ -270,9 +261,9 @@ $archivoLog = ruta_absoluta $Log
 
 # Modo daemon (hijo relanzado): variable interna que indica que ya es el proceso en segundo plano
 if ($ModoDemonio) {
-    # El hijo recibe las palabras como string separado por coma (así las pasó el padre)
+    # El hijo recibe las palabras como string separado por coma
     $palabrasClave = ($Palabras -join ',') -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }
-    # Limpia el archivo PID al salir (por cualquier causa, incluso errores)
+    # Limpia el archivo PID al salir
     try {
         iniciar_bucle_de_monitoreo $Directorio $palabrasClave $archivoLog
     } finally {
@@ -281,8 +272,15 @@ if ($ModoDemonio) {
     exit 0
 }
 
-# Aplanar el array de palabras (PowerShell puede recibir "a,b,c" como un elemento o como varios)
+# Normalizar el array de palabras clave
 $palabrasClave = ($Palabras -join ',') -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }
+
+# Prevenir demonios duplicados para el mismo directorio
+$pidExistente = pid_del_daemon_activo $Directorio
+if ($null -ne $pidExistente) {
+    registrar_error "Ya hay un daemon para este directorio (PID: $pidExistente)."
+    exit 1
+}
 
 # Crear el directorio del log si no existe, y el archivo log vacío
 $dirLog = Split-Path $archivoLog -Parent
@@ -296,12 +294,5 @@ try {
     exit 1
 }
 
-# Prevenir demonios duplicados para el mismo directorio
-$pidExistente = pid_del_daemon_activo $Directorio
-if ($null -ne $pidExistente) {
-    registrar_error "Ya hay un daemon para este directorio (PID: $pidExistente)."
-    exit 1
-}
-
-# Pasar las palabras como string unido por coma al proceso hijo
+# Lanzar el daemon en segundo plano y guardar su PID
 lanzar_daemon $Directorio ($palabrasClave -join ',') $archivoLog

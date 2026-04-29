@@ -1,7 +1,0 @@
-[2026-04-24 00:17:21] Demonio iniciado | Directorio: '/home/cisco/apl-bash-powershell/APL/bash/ejercicio4/descargas' | Palabras: password token api_key
-[2026-04-24 00:17:21] Procesando archivos existentes en '/home/cisco/apl-bash-powershell/APL/bash/ejercicio4/descargas' ...
-[2026-04-24 00:17:21] Operación: EXISTENTE  | Archivo: '/home/cisco/apl-bash-powershell/APL/bash/ejercicio4/descargas/credencialesUltraMegaSecreta.txt' | Palabra: 'password' | Tamaño: 78 bytes
-[2026-04-24 00:17:21] Operación: EXISTENTE  | Archivo: '/home/cisco/apl-bash-powershell/APL/bash/ejercicio4/descargas/credencialesUltraMegaSecreta.txt' | Palabra: 'token' | Tamaño: 78 bytes
-[2026-04-24 00:17:21] Operación: EXISTENTE  | Archivo: '/home/cisco/apl-bash-powershell/APL/bash/ejercicio4/descargas/credencialesUltraMegaSecreta.txt' | Palabra: 'api_key' | Tamaño: 78 bytes
-[2026-04-24 00:17:21] Operación: EXISTENTE  | Archivo: '/home/cisco/apl-bash-powershell/APL/bash/ejercicio4/descargas/credenciales.txt' | Palabra: 'password' | Tamaño: 20 bytes
-[2026-04-24 00:17:21] 2 archivos existentes procesados.
