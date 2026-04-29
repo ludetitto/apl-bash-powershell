@@ -1,5 +1,6 @@
 ﻿#!/bin/bash
 
+
 # Declaracion de parametros globales
 ID=""
 NOMBRE=""

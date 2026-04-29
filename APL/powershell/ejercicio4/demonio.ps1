@@ -6,9 +6,10 @@
 #                                                       #
 #   Integrantes:                                        #
 #       Vignardel Francisco                             #
-#       Lucia de Titto                                  #
-#       Samuel                                          #
+#       De Titto Lucia                                  #
+#       Gallardo Samuel                                 #
 #       Francisco Vladimir                              #
+#       Medna Ramiro                                    #
 #                                                       #
 #-------------------------------------------------------#
 
