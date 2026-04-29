@@ -1,0 +1,51 @@
+ID,Nombre,Apellido,Empresa,Ciudad,Provincia,Edad,Compras,Saldo
+1,Juan,Perez,Tech Solutions,Buenos Aires,Buenos Aires,34,12,15420.50
+2,Ana,Gomez,Global Corp,Cordoba,Cordoba,29,8,8930.00
+3,Luis,Martinez,Innova SA,Rosario,Santa Fe,45,15,22300.75
+4,Carla,Fernandez,Tech Solutions,La Plata,Buenos Aires,38,10,13450.00
+5,Pedro,Lopez,Servicios SRL,San Miguel,Buenos Aires,50,20,30500.20
+6,Sofia,Ramirez,Global Corp,San Juan,San Juan,27,5,7200.00
+7,Diego,Suarez,Innova SA,Mendoza,Mendoza,41,13,19800.90
+8,Lucia,Torres,Servicios SRL,San Rafael,Mendoza,36,9,11200.40
+9,Martin,Diaz,Tech Solutions,Cordoba,Cordoba,33,7,9800.00
+10,Valeria,Castro,Global Corp,Rosario,Santa Fe,31,11,15000.00
+11,Jorge,Ruiz,Innova SA,Neuquen,Neuquen,48,18,27000.00
+12,Marina,Silva,Servicios SRL,Bariloche,Rio Negro,26,6,6400.00
+13,Federico,Acosta,Tech Solutions,Salta,Salta,39,14,21000.00
+14,Paula,Medina,Global Corp,San Salvador de Jujuy,Jujuy,28,4,5800.00
+15,Nicolas,Herrera,Innova SA,Resistencia,Chaco,44,16,24000.00
+16,Florencia,Vega,Servicios SRL,Posadas,Misiones,35,9,12000.00
+17,Gabriel,Ortega,Tech Solutions,Parana,Entre Rios,42,13,18500.00
+18,Daniela,Navarro,Global Corp,Santa Fe,Santa Fe,30,7,9100.00
+19,Andres,Molina,Innova SA,Ushuaia,Tierra del Fuego,37,10,13200.00
+20,Julieta,Rojas,Servicios SRL,Rio Gallegos,Santa Cruz,32,8,10100.00
+21,Bruno,Sosa,Tech Solutions,La Plata,Buenos Aires,40,12,16000.00
+22,Camila,Peralta,Global Corp,Cordoba,Cordoba,27,6,7200.00
+23,Emiliano,Godoy,Innova SA,Rosario,Santa Fe,36,14,20500.00
+24,Agustina,Luna,Servicios SRL,San Luis,San Luis,33,9,11800.00
+25,Tomas,Quiroga,Tech Solutions,Mendoza,Mendoza,45,17,26000.00
+26,Luciano,Bravo,Global Corp,Neuquen,Neuquen,31,7,9500.00
+27,Milagros,Leiva,Innova SA,Salta,Salta,29,8,11000.00
+28,Santiago,Farias,Servicios SRL,Posadas,Misiones,38,11,14500.00
+29,Rocio,Miranda,Tech Solutions,Parana,Entre Rios,34,10,13500.00
+30,Facundo,Ibarra,Global Corp,Santa Fe,Santa Fe,41,13,17500.00
+31,Julian,Moyano,Innova SA,Ushuaia,Tierra del Fuego,37,9,12500.00
+32,Antonella,Romero,Servicios SRL,Rio Gallegos,Santa Cruz,28,6,8000.00
+33,Nahuel,Castillo,Tech Solutions,Bahia Blanca,Buenos Aires,39,15,22000.00
+34,Abril,Suarez,Global Corp,San Juan,San Juan,26,5,7000.00
+35,Kevin,Rojas,Innova SA,Resistencia,Chaco,44,16,24500.00
+36,Martina,Ortiz,Servicios SRL,Bariloche,Rio Negro,32,8,10500.00
+37,Lucas,Reyes,Tech Solutions,San Miguel,Buenos Aires,35,11,15000.00
+38,Valentin,Gutierrez,Global Corp,Cordoba,Cordoba,30,9,12000.00
+39,Florencia,Silva,Innova SA,Rosario,Santa Fe,42,14,21000.00
+40,Maximiliano,Cabrera,Servicios SRL,Mendoza,Mendoza,46,18,28000.00
+41,Daniel,Acuna,Tech Solutions,La Plata,Buenos Aires,38,12,17000.00
+42,Mariana,Paz,Global Corp,Salta,Salta,29,7,9000.00
+43,Franco,Dominguez,Innova SA,Neuquen,Neuquen,41,13,19000.00
+44,Paola,Coronel,Servicios SRL,Posadas,Misiones,33,9,11500.00
+45,Hernan,Alvarez,Tech Solutions,Parana,Entre Rios,47,16,25000.00
+46,Yesica,Ojeda,Global Corp,Santa Fe,Santa Fe,28,6,8500.00
+47,Gonzalo,Nuñez,Innova SA,Ushuaia,Tierra del Fuego,36,10,14000.00
+48,Carolina,Cardozo,Servicios SRL,Rio Gallegos,Santa Cruz,31,7,9200.00
+49,Leandro,Villalba,Tech Solutions,Buenos Aires,Buenos Aires,43,14,20000.00
+50,Melina,Segovia,Global Corp,Cordoba,Cordoba,34,11,15500.00

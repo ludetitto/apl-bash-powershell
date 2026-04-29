@@ -5,7 +5,23 @@ Como parte de la cursada de _Virtualización de Hardware_, se propuso la realiza
 Son cinco ejercicios en total, cada uno de ellos abarcando una herramienta en particular. **Para la aprobación de la práctica la resolución de todos los ejercicios debe ser tanto en Bash como en Powershell.**
 
 ### Ejercicio 1
-`//TODO: Completar documentación a medida que se resuelva.`
+Script genérico en Bash que permite procesar archivos CSV realizando operaciones de filtrado, conteo y suma sobre sus registros.
+
+El programa toma como referencia la primera fila del archivo para identificar los nombres de las columnas, permitiendo trabajar con ellas de forma dinámica mediante parámetros.
+
+### Funcionalidades
+
+- Filtrar registros por un campo y un patrón de texto (case-insensitive)
+- Contar la cantidad de registros resultantes
+- Sumar valores de una columna numérica
+- Validar parámetros de entrada y tipos de datos
+- Manejo de errores con mensajes claro
+
+**Uso básico:**
+```bash
+./procesarCSV.sh -a clientes.csv -f Apellido -b "Perez" -s Saldo
+```
+
 ### Ejercicio 2
 `//TODO: Completar documentación a medida que se resuelva.`
 ### Ejercicio 3
