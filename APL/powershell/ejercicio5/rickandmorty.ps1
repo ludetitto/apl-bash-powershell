@@ -102,15 +102,15 @@ function Mostrar-Personaje {
         [Parameter(Mandatory=$true)]
         $personaje
     )
-    Write-Host "Character info:"
-    Write-Host "  Id: $($personaje.id)"
-    Write-Host "  Name: $($personaje.name)"
-    Write-Host "  Status: $($personaje.status)"
-    Write-Host "  Species: $($personaje.species)"
-    Write-Host "  Gender: $($personaje.gender)"
-    Write-Host "  Origin: $($personaje.origin.name)"
-    Write-Host "  Location: $($personaje.location.name)"
-    Write-Host "  Episodes: $($personaje.episode.Count)"
+    Write-Host "`nCharacter info:"
+    Write-Host "    Id: $($personaje.id)"
+    Write-Host "    Name: $($personaje.name)"
+    Write-Host "    Status: $($personaje.status)"
+    Write-Host "    Species: $($personaje.species)"
+    Write-Host "    Gender: $($personaje.gender)"
+    Write-Host "    Origin: $($personaje.origin.name)"
+    Write-Host "    Location: $($personaje.location.name)"
+    Write-Host "    Episodes: $($personaje.episode.Count)"
 }
 
 # Funcion para buscar personajes en la cache o verificar en el log según el tipo
@@ -333,9 +333,9 @@ function Obtener-Personaje-Por-Nombre {
 
 # Función para mostrar la ruta de los archivos utilizados
 function Mostrar-Path-Archivos {
-    Write-Host "INFO: Ruta de archivos utilizados:"
-    Write-Host "Cache de personajes: $(Get-Item "characters_cache.json").FullName"
-    Write-Host "Log de consultas a la API: $(Get-Item "api_tracking.log").FullName"
+    Write-Host "`nINFO: Ruta de archivos utilizados:"
+    Write-Host "    Cache de personajes: $(Get-Item "characters_cache.json").FullName"
+    Write-Host "    Log de consultas a la API: $(Get-Item "api_tracking.log").FullName"
 }
 
 # Funcionamiento del script

@@ -126,7 +126,7 @@ crear_recursos() {
 # Funcion para mostrar la informacion de un personaje
 mostrar_personaje() {
     local id="$1" nombre="$2" status="$3" species="$4" gender="$5" origin="$6" location="$7" episodes="$8"
-    printf "\nCharacter info:\nId: %s\nName: %s\nStatus: %s\nSpecies: %s\nGender: %s\nOrigin: %s\nLocation: %s\nEpisodes: %s\n" "$id" "$nombre" "$status" "$species" "$gender" "$origin" "$location" "$episodes"
+    printf "\nCharacter info:\n    Id: %s\n    Name: %s\n    Status: %s\n    Species: %s\n    Gender: %s\n    Origin: %s\n    Location: %s\n    Episodes: %s\n" "$id" "$nombre" "$status" "$species" "$gender" "$origin" "$location" "$episodes"
 }
 
 # Funcion para buscar personajes en la cache por ID
