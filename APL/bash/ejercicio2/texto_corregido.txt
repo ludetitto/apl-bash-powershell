@@ -1,5 +1,8 @@
-¿ HOla como estas?
+¿Hola como estas? Espero que todo bien.Yo estoy bien, aunque un poco cansado... ¡Ayer sali a caminar y hacia mucho frio! No lo esperaba.
 
-QuERIa, decirte que...
-Estoy ¿procesando archivos en bash?
+¿Me pregunto si vendras mañana? Podriamos ir al cine, o quizas quedarnos en casa viendo una pelicula. No se que opinas.
+
+¿La verdad es que tengo muchas cosas que hacer, pero tambien quiero descansar... Quizas pueda organizarme mejor?
+
+"Este texto tiene comillas mezcladas" y tambien errores de puntuacion, ¡espacios y formato! ¿Incluso hay preguntas mal hechas? ¡Y exclamaciones mal usadas!
 
