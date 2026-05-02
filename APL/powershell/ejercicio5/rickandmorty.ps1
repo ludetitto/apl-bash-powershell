@@ -43,15 +43,14 @@
     Limpia la cache de personajes y el log de consultas, eliminando los archivos "characters_cache.json" y "api_tracking.log" si existen.
 #>
 
-[CmdletBinding(DefaultParameterSetName = 'Buscar')]
 param(
-    [Parameter(ParameterSetName = 'Buscar')]
-    [ValidateScript({ $_ -notmatch '^\s*$' -and $_ -gt 0 })]
+    [Parameter(ParameterSetName = 'ID')]
+    [ValidateScript({ $_ -gt 0 })]
     [Alias("i")]
     [int[]]$Id,
     
-    [Parameter(ParameterSetName = 'Buscar')]
-    [ValidateScript({ $_ -notmatch '^\s*$'})]
+    [Parameter(ParameterSetName = 'Nombre')]
+    [ValidateNotNullOrEmpty()]
     [Alias("b")]
     [string[]]$Nombre,
     
@@ -78,11 +77,6 @@ function Validar-Parametros {
 
         Write-Host "Cache de personajes limpio."
         exit 0
-    }
-    if(-not $Id -and -not $Nombre) {
-        Write-Host "No se han proporcionado argumentos validos."
-        Write-Host "Use Get-Help para ver las opciones disponibles."
-        exit 1
     }
 }
 
