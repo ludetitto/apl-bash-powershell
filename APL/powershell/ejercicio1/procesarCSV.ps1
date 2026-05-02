@@ -2,7 +2,7 @@
 #               Virtualizacion de Hardware              #
 #                                                       #
 #   APL1                                                #
-#   Nro ejercicio: 4                                    #
+#   Nro ejercicio: 1                                    #
 #                                                       #
 #   Integrantes:                                        #
 #       Vignardel Francisco                             #
@@ -51,6 +51,18 @@
 #>
 
 param (
+    [Parameter(Mandatory = $true, ParameterSetName = 'Sumar')]
+    [Parameter(Mandatory = $true, ParameterSetName = 'Contar')]
+    [ValidateScript({ 
+        if(Test-Path $_ -PathType Leaf) { 
+            $true 
+        } else { 
+            throw "El archivo '$_' no existe." 
+            } 
+        if([System.IO.Path]::GetExtension($_) -ne ".csv") {
+            throw "El archivo '$_' no tiene extensión .csv."
+        }
+        })]
     [Alias("a")]
     [string]$Archivo,
 
@@ -60,49 +72,29 @@ param (
     [Alias("b")]
     [string]$Buscar,
 
+    [Parameter(Mandatory = $true, ParameterSetName = 'Sumar')]
     [Alias("s")]
     [string]$Sumar,
 
+    [Parameter(Mandatory = $true, ParameterSetName = 'Contar')]
     [Alias("c")]
     [switch]$Contar
 )
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
 
 # =========================
 # Validaciones
 # =========================
 
-if (-not $Archivo) {
-    Write-Host "Error: Debe indicar archivo con -a"
-    exit 1
-}
-
-if (-not (Test-Path $Archivo)) {
-    Write-Host "Error: el archivo no existe"
-    exit 1
-}
-
-if ($Archivo -notlike "*.csv") {
-    Write-Host "Error: el archivo debe tener extensión .csv"
-    exit 1
-}
-
-if ($Contar -and $Sumar) {
-    Write-Host "Error: no se puede usar -c y -s juntos"
-    exit 1
-}
-
-if (-not $Contar -and -not $Sumar) {
-    Write-Host "Error: debe usar -c o -s"
-    exit 1
-}
-
 if ($Filtro -and -not $Buscar) {
-    Write-Host "Error: si usa -f debe usar -b"
+    Write-Error "Error: si usa -f debe usar -b"
     exit 1
 }
 
 if ($Buscar -and -not $Filtro) {
-    Write-Host "Error: -b requiere -f"
+    Write-Error "Error: -b requiere -f"
     exit 1
 }
 
@@ -110,22 +102,23 @@ if ($Buscar -and -not $Filtro) {
 # Lectura CSV
 # =========================
 
-$data = Import-Csv $Archivo
-
-if (-not $data) {
-    Write-Host "Error: el archivo está vacío o no es válido"
+try {
+    $data = Import-Csv $Archivo -ErrorAction Stop
+}
+catch {
+    Write-Error "Error: no se pudo leer el archivo '$Archivo'. Asegúrese de que el archivo existe y es un CSV válido."
     exit 1
 }
 
 $headers = $data[0].PSObject.Properties.Name | ForEach-Object { $_.ToLower() }
 
 if ($filtro -and ($headers -notcontains $filtro.ToLower())) {
-    Write-Host "Error: campo de filtro no existe"
+    Write-Error "Error: campo de filtro no existe"
     exit 1
 }
 
 if ($sumar -and ($headers -notcontains $sumar.ToLower())) {
-    Write-Host "Error: campo de suma no existe"
+    Write-Error "Error: campo de suma no existe"
     exit 1
 }
 
@@ -153,9 +146,7 @@ foreach ($row in $data) {
         $valor = $row.$sumar
 
         if (-not ($valor -match '^-?[0-9]+(\.[0-9]+)?$')) {
-            Write-Host ""
-            Write-Host "Error: el campo '$sumar' contiene valores no numéricos."
-            Write-Host ""
+            Write-Error "Error: el campo '$sumar' contiene valores no numéricos."
             $error_flag = $true
             break
         }
