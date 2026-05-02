@@ -9,7 +9,7 @@
 #       De Titto Lucia                                  #
 #       Gallardo Samuel                                 #
 #       Francisco Vladimir                              #
-#       Medna Ramiro                                    #
+#       Medina Ramiro                                   #
 #                                                       #
 #-------------------------------------------------------#
 
@@ -56,12 +56,15 @@ param(
     [string]$Directorio,
 
     [Parameter(Mandatory = $true, ParameterSetName = 'Iniciar')]
+    [Alias("p")]
     [string]$Palabras,
 
     [Parameter(Mandatory = $true, ParameterSetName = 'Iniciar')]
+    [Alias("l")]
     [string]$Log,
 
     [Parameter(Mandatory = $true, ParameterSetName = 'Matar')]
+    [Alias("k")]
     [switch]$Kill,
 
     # Variable interna: el proceso padre la pasa al hijo para que sepa que ya es el daemon
