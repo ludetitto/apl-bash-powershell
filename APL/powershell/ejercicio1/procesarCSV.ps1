@@ -1,97 +1,107 @@
+#-------------------------------------------------------#
+#               Virtualizacion de Hardware              #
+#                                                       #
+#   APL1                                                #
+#   Nro ejercicio: 4                                    #
+#                                                       #
+#   Integrantes:                                        #
+#       Vignardel Francisco                             #
+#       De Titto Lucia                                  #
+#       Gallardo Samuel                                 #
+#       Francisco Vladimir                              #
+#       Medina Ramiro                                   #
+#                                                       #
+#-------------------------------------------------------#
+
+<#
+.SYNOPSIS
+    Script para procesar archivos CSV, permitiendo filtrar registros, contar filas o sumar valores de una columna.
+
+.DESCRIPTION
+    Este script permite analizar un archivo CSV aplicando un filtro de texto sobre un campo específico. 
+    Luego, dependiendo de la opción elegida, puede contar la cantidad de registros que cumplen el filtro o sumar los valores de un campo numérico para esos registros.
+    El filtro es de tipo "contiene" y no distingue mayúsculas de minúsculas.
+
+.PARAMETER Archivo
+   Archivo de entrada en formato CSV. El archivo debe tener una fila de encabezado con los nombres de las columnas.
+
+.PARAMETER Filtro
+    Nombre del campo a usar como filtro. Requiere el parámetro -Buscar.
+
+.PARAMETER Buscar
+    Valor a buscar en el campo indicado por -Filtro.
+
+.PARAMETER Sumar
+    Nombre del campo numérico a sumar. No puede usarse junto con -Contar.
+
+.PARAMETER Contar
+    Indica que se desea contar la cantidad de registros que cumplen el filtro.
+
+.EXAMPLE
+    .\procesarCSV.ps1 -a censo.csv -c
+    Cuenta la cantidad total de registros en el archivo censo.csv.
+
+.EXAMPLE
+    .\procesarCSV.ps1 -a censo.csv -f Ciudad -b "San" -c
+    Cuenta la cantidad de registros donde el campo Ciudad contiene "San".
+
+.EXAMPLE
+    .\procesarCSV.ps1 -a clientes.csv -f Apellido -b "Perez" -s Saldo
+    Suma el campo Saldo para los registros donde el campo Apellido contiene "Perez".
+#>
 
 param (
     [Alias("a")]
-    [string]$archivo,
+    [string]$Archivo,
 
     [Alias("f")]
-    [string]$filtro,
+    [string]$Filtro,
 
     [Alias("b")]
-    [string]$buscar,
+    [string]$Buscar,
 
     [Alias("s")]
-    [string]$sumar,
+    [string]$Sumar,
 
     [Alias("c")]
-    [switch]$contar,
-
-    [Alias("h")]
-    [switch]$help
+    [switch]$Contar
 )
-
-function Mostrar-Ayuda {
-@"
-
-Uso:
-  ./procesarCSV.ps1 -a archivo.csv [opciones]
-
-Descripción:
-  Script para procesar archivos CSV, permitiendo filtrar registros,
-  contar filas o sumar valores de una columna.
-
-Parámetros:
-  -a, -archivo   Archivo CSV de entrada (obligatorio)
-  -f, -filtro    Nombre del campo para filtrar (opcional)
-  -b, -buscar    Valor a buscar en el campo filtro (requerido si se usa -f)
-  -c, -contar    Cuenta la cantidad de registros
-  -s, -sumar     Suma los valores de un campo numérico
-  -h, -help      Muestra esta ayuda
-  
-Reglas:
-  - Debe indicar -c o -s (no ambos)
-  - -b requiere -f
-  - El filtro es opcional
-  - Los nombres de columnas o valores pueden ser escritos tanto en minusculas como en mayusculas
-
-Ejemplos:
-  ./procesarCSV.ps1 -a censo.csv -c
-  ./procesarCSV.ps1 -a censo.csv -f Ciudad -b "San" -c
-  ./procesarCSV.ps1 -a clientes.csv -f Apellido -b "Perez" -s Saldo
-  
-  
-"@
-}
-
-if ($help) {
-    Mostrar-Ayuda
-    exit 0
-}
 
 # =========================
 # Validaciones
 # =========================
 
-if (-not $archivo) {
+if (-not $Archivo) {
     Write-Host "Error: Debe indicar archivo con -a"
     exit 1
 }
 
-if (-not (Test-Path $archivo)) {
+if (-not (Test-Path $Archivo)) {
     Write-Host "Error: el archivo no existe"
     exit 1
 }
 
-if ($archivo -notlike "*.csv") {
+if ($Archivo -notlike "*.csv") {
     Write-Host "Error: el archivo debe tener extensión .csv"
     exit 1
 }
 
-if ($contar -and $sumar) {
+if ($Contar -and $Sumar) {
     Write-Host "Error: no se puede usar -c y -s juntos"
     exit 1
 }
 
-if (-not $contar -and -not $sumar) {
+if (-not $Contar -and -not $Sumar) {
     Write-Host "Error: debe usar -c o -s"
     exit 1
 }
 
-if ($filtro -and -not $buscar) {
+if ($Filtro -and -not $Buscar) {
     Write-Host "Error: si usa -f debe usar -b"
     exit 1
 }
 
-if ($buscar -and -not $filtro) {
+if ($Buscar -and -not $Filtro) {
     Write-Host "Error: -b requiere -f"
     exit 1
 }
@@ -100,7 +110,7 @@ if ($buscar -and -not $filtro) {
 # Lectura CSV
 # =========================
 
-$data = Import-Csv $archivo
+$data = Import-Csv $Archivo
 
 if (-not $data) {
     Write-Host "Error: el archivo está vacío o no es válido"
