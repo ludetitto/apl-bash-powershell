@@ -44,12 +44,11 @@
 #>
 
 param(
-    [Parameter(ParameterSetName = 'ID')]
+    [Parameter(ParameterSetName = 'Consultar')]
     [ValidateScript({ $_ -gt 0 })]
     [Alias("i")]
     [int[]]$Id,
     
-    [Parameter(ParameterSetName = 'Nombre')]
     [ValidateNotNullOrEmpty()]
     [Alias("b")]
     [string[]]$Nombre,
