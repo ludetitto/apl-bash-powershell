@@ -122,6 +122,41 @@ function pid_del_daemon_activo {
     }
 }
 
+# Verifica si el log ya está siendo usado por otro demonio activo
+function verificar_log_disponible {
+    param([string]$rutaLog)
+    $registry = [IO.Path]::Combine([IO.Path]::GetTempPath(), 'demonio_logs.registry')
+    if (-not (Test-Path $registry)) { return }
+    foreach ($linea in (Get-Content $registry -ErrorAction SilentlyContinue)) {
+        $partes = $linea -split '\|', 2
+        if ($partes.Count -ne 2) { continue }
+        $pidReg = $partes[0].Trim()
+        $logReg = $partes[1].Trim()
+        if ([string]::IsNullOrWhiteSpace($pidReg) -or [string]::IsNullOrWhiteSpace($logReg)) { continue }
+        try { Get-Process -Id $pidReg -ErrorAction Stop | Out-Null } catch { continue }  # proceso ya no existe
+        if ($logReg -eq $rutaLog) {
+            registrar_error "El archivo de log '$rutaLog' ya está en uso por otro demonio (PID: $pidReg)."
+            registrar_error "Cambiá el nombre o la ruta del log con -Log."
+            exit 1
+        }
+    }
+}
+
+function registrar_log_en_uso {
+    param([string]$pid, [string]$rutaLog)
+    $registry = [IO.Path]::Combine([IO.Path]::GetTempPath(), 'demonio_logs.registry')
+    Add-Content -LiteralPath $registry -Value "$pid|$rutaLog" -Encoding ascii
+}
+
+function liberar_log_en_uso {
+    param([string]$pid)
+    $registry = [IO.Path]::Combine([IO.Path]::GetTempPath(), 'demonio_logs.registry')
+    if (-not (Test-Path $registry)) { return }
+    $lineas = Get-Content $registry -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch "^${pid}\|" }
+    if ($null -eq $lineas) { $lineas = @() }
+    $lineas | Set-Content -LiteralPath $registry -Encoding ascii
+}
+
 # Log
 function escribir_linea_log {
     param([string]$linea, [string]$rutaLog)
@@ -286,9 +321,12 @@ $archivoLog = ruta_absoluta $Log
 if ($ModoDemonio) {
     # El hijo recibe las palabras como string separado por coma
     $palabrasClave = ($Palabras -join ',') -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }
+    $pidActual = $PID.ToString()
+    registrar_log_en_uso $pidActual $archivoLog
     try {
         iniciar_bucle_de_monitoreo $Directorio $palabrasClave $archivoLog
     } finally {
+        liberar_log_en_uso $pidActual
         Remove-Item (ruta_archivo_pid    $Directorio) -Force -ErrorAction SilentlyContinue
         Remove-Item (ruta_archivo_estado $Directorio) -Force -ErrorAction SilentlyContinue
     }
@@ -304,6 +342,9 @@ if ($null -ne $pidExistente) {
     registrar_error "Ya hay un daemon para este directorio (PID: $pidExistente)."
     exit 1
 }
+
+# Prevenir que dos demonios usen el mismo archivo de log
+verificar_log_disponible $archivoLog
 
 # Crear el directorio del log si no existe, y el archivo log vacío
 $dirLog = Split-Path $archivoLog -Parent
