@@ -70,6 +70,10 @@ get_pid_file() {
   echo "/tmp/demonio_$(echo -n "$DIRECTORIO" | md5sum | cut -d' ' -f1).pid"
 }
 
+get_state_file() {
+  echo "/tmp/demonio_$(echo -n "$DIRECTORIO" | md5sum | cut -d' ' -f1).state"
+}
+
 # Devuelve el PID del demonio si está corriendo; si el PID file es huérfano lo limpia
 running_pid() {
   local pf; pf="$(get_pid_file)"
@@ -122,11 +126,14 @@ scan_file() {
 # Procesa los archivos que ya estaban en el directorio al arrancar el demonio
 scan_existing_files() {
   local count=0
+  local state_file; state_file="$(get_state_file)"
+  local -a find_args=("$DIRECTORIO" -maxdepth 1 -type f)
+  [[ -f "$state_file" ]] && find_args+=(-newer "$state_file")
   log_line "[$(timestamp)] Procesando archivos existentes en '$DIRECTORIO' ..."
   while IFS= read -r -d '' f; do
     scan_file "$f" "EXISTENTE"
     count=$(( count + 1 ))
-  done < <(find "$DIRECTORIO" -maxdepth 1 -type f -print0 2>/dev/null)
+  done < <(find "${find_args[@]}" -print0 2>/dev/null)
   log_line "[$(timestamp)] $count archivos existentes procesados."
 }
 
@@ -145,10 +152,12 @@ daemon_loop() {
     "$(timestamp)" "$DIRECTORIO" "${PALABRAS[*]}")"
 
   scan_existing_files
+  touch "$(get_state_file)"
 
   # < <(...) en lugar de pipe | para que el while quede en el proceso principal
   while IFS= read -r line; do
     process_inotify_event "$line"
+    touch "$(get_state_file)"  # actualizar tras cada evento procesado
   done < <(inotifywait -m -e close_write,moved_to \
              --format '%e %w%f' "$DIRECTORIO" 2>/dev/null)
 }
@@ -201,14 +210,14 @@ if (( KILL_MODE )); then
   kill -TERM "$pid" 2>/dev/null || true
   sleep 1
   kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" 2>/dev/null || true
-  rm -f "$(get_pid_file)"
+  rm -f "$(get_pid_file)" "$(get_state_file)"
   log_info "Demonio detenido (PID: $pid)."
   exit 0
 fi
 
 # proceso demonio (relanzado por nohup con DAEMON_MODE=1) ---
 if [[ "${DAEMON_MODE:-0}" == "1" ]]; then
-  trap 'rm -f "$(get_pid_file)"' EXIT   # limpia el PID file al salir por cualquier motivo
+  trap 'rm -f "$(get_pid_file)" "$(get_state_file)"' EXIT
   daemon_loop
   exit 0
 fi
