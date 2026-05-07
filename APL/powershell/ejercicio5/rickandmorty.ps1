@@ -93,63 +93,91 @@ function Crear-Recursos {
 function Mostrar-Personaje {
     param(
         [Parameter(Mandatory=$true)]
-        $personajes
+        $PERSONAJES
     )
 
-    foreach($personaje in $personajes) {
+    foreach($PERSONAJE in $PERSONAJES) {
         Write-Host "`nCharacter info:"
-        Write-Host "    Id: $($personaje.id)"
-        Write-Host "    Name: $($personaje.name)"
-        Write-Host "    Status: $($personaje.status)"
-        Write-Host "    Species: $($personaje.species)"
-        Write-Host "    Gender: $($personaje.gender)"
-        Write-Host "    Origin: $($personaje.origin.name)"
-        Write-Host "    Location: $($personaje.location.name)"
-        Write-Host "    Episodes: $($personaje.episode.Count)"
+        Write-Host "    Id: $($PERSONAJE.id)"
+        Write-Host "    Name: $($PERSONAJE.name)"
+        Write-Host "    Status: $($PERSONAJE.status)"
+        Write-Host "    Species: $($PERSONAJE.species)"
+        Write-Host "    Gender: $($PERSONAJE.gender)"
+        Write-Host "    Origin: $($PERSONAJE.origin.name)"
+        Write-Host "    Location: $($PERSONAJE.location.name)"
+        Write-Host "    Episodes: $($PERSONAJE.episode.Count)"
     }
 }
 
 # Funcion para buscar personajes en la cache o verificar en el log según el tipo
 function Buscar-En-Cache {
     param(
-        [string]$tipo,
-        [string]$valor
+        [string]$TIPO,
+        [string]$VALOR
     )
 
-    if (Test-Path "cache/$tipo/$valor")
+    if (Test-Path "cache/$TIPO/$VALOR")
     {
-        $cache = Get-Content "cache/$tipo/$valor" -Raw | ConvertFrom-Json
-        Mostrar-Personaje $cache
+        $CACHE = Get-Content "cache/$TIPO/$VALOR" -Raw | ConvertFrom-Json
+        Mostrar-Personaje $CACHE
         return $true
     }
 
     return $false
 }
 
+# Funcion para validar la respuesta de la API
+function Validar-Respuesta {
+    param(
+        [int]$HTTP_CODE
+    )
+
+    if($HTTP_CODE -eq 0 -or -not $HTTP_CODE) {
+        Write-Host "Error: No se pudo conectar a la API. Verifique su conexion a internet."
+    }
+    
+    if($HTTP_CODE -eq 404) {
+        Write-Host "Error: No se encontraron personajes que coincidan con la consulta."
+    }
+    
+    if($HTTP_CODE -ge 500) {
+        Write-Host "Error: La API del servidor no esta disponible (HTTP $HTTP_CODE)."
+    }
+    
+    if($HTTP_CODE -ne 200) {
+        Write-Host "Error: La API devolvio un error HTTP $HTTP_CODE."
+    }
+}
+
 # Funcion para obtener personajes por ID
 function Obtener-Personaje-Por-ID {
     param(
-        [int[]]$ids
+        [int[]]$IDS
     )
     
-    foreach($idItem in $ids) {
-        $idItem = $idItem.ToString().Trim()
-        if(-not $idItem) { continue }
+    foreach($ID_ITEM in $IDS) {
+        $ID_ITEM = $ID_ITEM.ToString().Trim()
+        if(-not $ID_ITEM) { continue }
         
-        if(-not (Buscar-En-Cache "id" $idItem)) {
-
-            $uri = "https://rickandmortyapi.com/api/character/$idItem"
+        if(-not (Buscar-En-Cache "id" $ID_ITEM)) {
+            $URI = "https://rickandmortyapi.com/api/character/$ID_ITEM"
             
             try {
-                $response = Invoke-RestMethod -Uri $uri -TimeoutSec 10 -ErrorAction Stop
+                $RESPONSE = Invoke-WebRequest -Uri $URI -TimeoutSec 10 -ErrorAction Stop
+                $HTTP_CODE = $RESPONSE.StatusCode
                 
-                if($response) {
-                    Mostrar-Personaje $response
-                    $response | ConvertTo-Json | Out-File "./cache/id/$idItem" -Encoding UTF8
-                }
+                $CONTENT = $RESPONSE.Content | ConvertFrom-Json
+                Mostrar-Personaje $CONTENT
+                $CONTENT | ConvertTo-Json | Out-File "./cache/id/$ID_ITEM" -Encoding UTF8
             }
-            catch {
-                Write-Host "Error al obtener personaje con ID $idItem : $_"
+            catch [System.Net.Http.HttpRequestException] {
+                if($_.Exception.Response) {
+                    $HTTP_CODE = $_.Exception.Response.StatusCode -as [int]
+                }
+                Validar-Respuesta $HTTP_CODE
+            }
+            catch [System.Net.WebException] {
+                Validar-Respuesta 0
             }
         }
     }
@@ -158,28 +186,36 @@ function Obtener-Personaje-Por-ID {
 # Funcion para obtener personajes por nombre
 function Obtener-Personaje-Por-Nombre {
     param(
-        [string[]]$nombres
+        [string[]]$NOMBRES
     )
 
-    foreach($nombre in $nombres) {
-        $nombre = $nombre.Trim()
-        if(-not $nombre) { continue }
+    foreach($NOMBRE in $NOMBRES) {
+        $NOMBRE = $NOMBRE.Trim()
+        if(-not $NOMBRE) { continue }
         
-        if(-not (Buscar-En-Cache "nombre" $nombre)) {
-            $uri = "https://rickandmortyapi.com/api/character/?name=$nombre"
+        if(-not (Buscar-En-Cache "nombre" $NOMBRE)) {
+            $URI = "https://rickandmortyapi.com/api/character/?name=$NOMBRE"
             
             try {
-                $response = Invoke-RestMethod -Uri $uri -TimeoutSec 10 -ErrorAction Stop
+                $RESPONSE = Invoke-WebRequest -Uri $URI -TimeoutSec 10 -ErrorAction Stop
+                $HTTP_CODE = $RESPONSE.StatusCode
                 
-                if($response.results) {
-                    foreach($personaje in $response.results) {
-                        Mostrar-Personaje $personaje
+                $CONTENT = $RESPONSE.Content | ConvertFrom-Json
+                if($CONTENT.results) {
+                    foreach($PERSONAJE in $CONTENT.results) {
+                        Mostrar-Personaje $PERSONAJE
                     }
-                    $response.results | ConvertTo-Json | Out-File "./cache/nombre/$nombre" -Encoding UTF8
+                    $CONTENT.results | ConvertTo-Json | Out-File "./cache/nombre/$NOMBRE" -Encoding UTF8
                 }
             }
-            catch {
-                Write-Host "Error al obtener personaje con nombre $nombre : $_"
+            catch [System.Net.Http.HttpRequestException] {
+                if($_.Exception.Response) {
+                    $HTTP_CODE = $_.Exception.Response.StatusCode -as [int]
+                }
+                Validar-Respuesta $HTTP_CODE
+            }
+            catch [System.Net.WebException] {
+                Validar-Respuesta 0
             }
         }
     }
