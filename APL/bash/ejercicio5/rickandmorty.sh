@@ -72,10 +72,10 @@ validar_parametros() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       -i|--id)
-        ID="${2:-}" # 2:- es el segundo argumento, si no existe se asigna una cadena vaci­a
-        shift 2 # $1 y $2 se eliminan, entonces el siguiente argumento se convierte en $1 y $2 (-n [NOMBRE] si lo hubiera)
-        ;; # ;; es el final de un caso en el bloque case
-      --id=*) # caso --id="ID1,ID2,ID3"
+        ID="${2:-}"
+        shift 2
+        ;;
+      --id=*)
         ID="${1#*=}"
         shift
         ;;
@@ -108,6 +108,23 @@ validar_parametros() {
     echo "Error: -c/--clear no puede utilizarse junto con opciones de busqueda (-i, -n, --id, --nombre)"
     exit 1
   fi
+  
+  # Validar que ID contenga solo numeros y/o comas
+  if [[ -n "$ID" ]] && ! [[ "$ID" =~ ^[0-9,]+$ ]]; then
+    echo "Error: El ID debe contener solo numeros y/o comas. Ejemplo: 1,2,3"
+    exit 1
+  fi
+  
+  # Validar que no haya comas dobles ni al inicio/final
+  if [[ -n "$ID" ]] && [[ "$ID" =~ ,, ]]; then
+    echo "Error: No se permiten comas dobles en el ID."
+    exit 1
+  fi
+  
+  if [[ -n "$ID" ]] && [[ "$ID" =~ ^, ]] || [[ "$ID" =~ ,$ ]]; then
+    echo "Error: El ID no puede comenzar ni terminar con coma."
+    exit 1
+  fi
 }
 
 # Funcion para crear los archivos necesarios
@@ -121,14 +138,14 @@ crear_recursos() {
 
 # Funcion para mostrar la informacion de un personaje
 mostrar_personaje() {
-    local id="$1" nombre="$2" status="$3" species="$4" gender="$5" origin="$6" location="$7" episodes="$8"
-    printf "\nCharacter info:\n    Id: %s\n    Name: %s\n    Status: %s\n    Species: %s\n    Gender: %s\n    Origin: %s\n    Location: %s\n    Episodes: %s\n" "$id" "$nombre" "$status" "$species" "$gender" "$origin" "$location" "$episodes"
+    local ID="$1" NOMBRE="$2" STATUS="$3" SPECIES="$4" GENDER="$5" ORIGIN="$6" LOCATION="$7" EPISODES="$8"
+    printf "\nCharacter info:\n    Id: %s\n    Name: %s\n    Status: %s\n    Species: %s\n    Gender: %s\n    Origin: %s\n    Location: %s\n    Episodes: %s\n" "$ID" "$NOMBRE" "$STATUS" "$SPECIES" "$GENDER" "$ORIGIN" "$LOCATION" "$EPISODES"
 }
 
 # Funcion para buscar personajes en la cache por ID
 buscar_por_id() {
-    local valor="$1"
-    grep "^${valor}|" characters_cache.txt | while IFS='|' read -r CID NAME STATUS SPECIES GENDER ORIGIN LOCATION EPISODES; do
+    local VALOR="$1"
+    grep "^${VALOR}|" characters_cache.txt | while IFS='|' read -r CID NAME STATUS SPECIES GENDER ORIGIN LOCATION EPISODES; do
       [[ -z "$CID" ]] || [[ "$CID" == "ID" ]] && continue
       mostrar_personaje "$CID" "$NAME" "$STATUS" "$SPECIES" "$GENDER" "$ORIGIN" "$LOCATION" "$EPISODES"
     done
@@ -136,8 +153,8 @@ buscar_por_id() {
 
 # Funcion para buscar personajes en la cache por nombre
 buscar_por_nombre() {
-  local valor="$1"
-  awk -F'|' -v q="$valor" '
+  local VALOR="$1"
+  awk -F'|' -v q="$VALOR" '
   BEGIN { q=tolower(q) }
   NR==1 { next }
   index(tolower($2), q) > 0 {
@@ -148,25 +165,77 @@ buscar_por_nombre() {
   done
 }
 
+# Funcion para validar la respuesta de la API
+validar_response() {
+  local response="$1"
+  local http_code="$2"
+  
+  # Si no hay http_code, significa error de conexión
+  if [[ -z "$http_code" ]] || [[ "$http_code" == "000" ]]; then
+    echo "Error: No se pudo conectar a la API. Verifique su conexion a internet."
+    return 0 # Error
+  fi
+  
+  # Validar HTTP status codes
+  if [[ $http_code -eq 404 ]]; then
+    echo "Error: No se encontraron personajes que coincidan con la consulta."
+    return 0 # Error
+  fi
+  
+  if [[ $http_code -ge 500 ]]; then
+    echo "Error: La API del servidor no está disponible (HTTP $http_code)."
+    return 0 # Error
+  fi
+  
+  if [[ $http_code -ne 200 ]]; then
+    echo "Error: La API devolvió un error HTTP $http_code."
+    return 0 # Error
+  fi
+  
+  # Validar respuesta vacía
+  if [[ -z "$response" ]]; then
+    echo "Error: La API no devolvió respuesta."
+    return 0 # Error
+  fi
+  
+  # Validar si contiene error JSON
+  if echo "$response" | grep -q '"error":'; then
+    echo "Error: No se encontraron resultados."
+    return 0 # Error
+  fi
+  
+  return 1
+}
+
 # Funcion para obtener personajes por ID
 obtener_personajes_por_id() {
-    ID_CLEAN=$(printf '%s' "$ID" | sed 's/[^0-9,]//g')
-    IFS=',' read -ra IDS <<< "$ID_CLEAN"
+    IFS=',' read -ra IDS <<< "$ID"
+    RESPONSE=""
 
     IDS_A_PEDIR=()
     
-    for id in "${IDS[@]}"; do
-      if grep -q "^${id}|" characters_cache.txt; then
-        buscar_por_id "$id"
+    for ID_ITEM in "${IDS[@]}"; do
+      if grep -q "^${ID_ITEM}|" characters_cache.txt; then
+        buscar_por_id "$ID_ITEM"
       else
-        IDS_A_PEDIR+=("$id")
+        IDS_A_PEDIR+=("$ID_ITEM")
       fi
     done
 
     if [[ ${#IDS_A_PEDIR[@]} -gt 0 ]]; then
       IDS_QUERY=$(IFS=,; echo "${IDS_A_PEDIR[*]}")
-      curl -fsS "https://rickandmortyapi.com/api/character/$IDS_QUERY" > "/tmp/rickandmorty_$$.txt"
       
+      # Capturar respuesta y HTTP code
+      RESPONSE=$(curl -w "\n%{HTTP_CODE}" -fsS "https://rickandmortyapi.com/api/character/$IDS_QUERY" 2>/dev/null)
+      HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+      RESPONSE=$(echo "$RESPONSE" | head -n -1)
+      
+      if validar_response "$RESPONSE" "$HTTP_CODE"; then
+        return 1
+      fi
+
+      echo "$RESPONSE" > "/tmp/rickandmorty_$$.txt"
+
       for id in "${IDS_A_PEDIR[@]}"; do
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] ID:$id" >> api_tracking.log
       done
@@ -178,53 +247,64 @@ obtener_personajes_por_nombre() {
     NOMBRES_A_PEDIR=()
     NOMBRE_CLEAN=${NOMBRE//[[:space:]]/}
     IFS=',' read -ra NOMBRES <<< "$NOMBRE_CLEAN"
+    RESPONSE=""
 
-    for nombre in "${NOMBRES[@]}"; do
-      [[ -z "$nombre" ]] && continue
+    for NOMBRE_ITEM in "${NOMBRES[@]}"; do
+      [[ -z "$NOMBRE_ITEM" ]] && continue
       
-      if grep -q "NOMBRE:$nombre" api_tracking.log; then
-        buscar_por_nombre "$nombre"
+      if grep -q "NOMBRE:$NOMBRE_ITEM" api_tracking.log; then
+        buscar_por_nombre "$NOMBRE_ITEM"
       else
-        NOMBRES_A_PEDIR+=("$nombre")
+        NOMBRES_A_PEDIR+=("$NOMBRE_ITEM")
       fi
     done
       
-    for nombre in "${NOMBRES_A_PEDIR[@]}"; do
+    for NOMBRE_ITEM in "${NOMBRES_A_PEDIR[@]}"; do
       if [[ -s /tmp/rickandmorty_$$.txt ]]; then
         echo "," >> '/tmp/rickandmorty_$$.txt'
       fi
-      curl -fsS "https://rickandmortyapi.com/api/character/?name=$nombre" >> "/tmp/rickandmorty_$$.txt"
+
+      # Capturar respuesta y HTTP code
+      RESPONSE=$(curl -w "\n%{HTTP_CODE}" -fsS "https://rickandmortyapi.com/api/character/?name=$NOMBRE_ITEM" 2>/dev/null)
+      HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+      RESPONSE=$(echo "$RESPONSE" | head -n -1)
+
+      if validar_response "$RESPONSE" "$HTTP_CODE"; then
+        return 1
+      fi
+
+      echo "$RESPONSE" >> "/tmp/rickandmorty_$$.txt"
       
-      echo "[$(date '+%Y-%m-%d %H:%M:%S')] NOMBRE:$nombre" >> api_tracking.log
+      echo "[$(date '+%Y-%m-%d %H:%M:%S')] NOMBRE:$NOMBRE_ITEM" >> api_tracking.log
     done
 }
 
 # Funcion para parsear un campo especifico de un objeto JSON
 parsear_campo() {
-  local json="$1" campo="$2"
-    case "$campo" in
-        id) echo "$json" | sed -n 's/.*"id":\([0-9]*\).*/\1/p' ;;
-        name) echo "$json" | sed -n 's/.*"id":[0-9]*,"name":"\([^"]*\)".*/\1/p' ;;
-        status) echo "$json" | sed -n 's/.*"status":"\([^"]*\)".*/\1/p' ;;
-        species) echo "$json" | sed -n 's/.*"species":"\([^"]*\)".*/\1/p' ;;
-        gender) echo "$json" | sed -n 's/.*"gender":"\([^"]*\)".*/\1/p' ;;
-        origin) echo "$json" | sed -n 's/.*"origin":{"name":"\([^"]*\)".*/\1/p' ;;
-        location) echo "$json" | sed -n 's/.*"location":{"name":"\([^"]*\)".*/\1/p' ;;
-        episodes) echo "$json" | grep -o 'https://rickandmortyapi.com/api/episode/[0-9]\+' | wc -l ;;
+  local JSON="$1" CAMPO="$2"
+    case "$CAMPO" in
+        id) echo "$JSON" | sed -n 's/.*"id":\([0-9]*\).*/\1/p' ;;
+        name) echo "$JSON" | sed -n 's/.*"id":[0-9]*,"name":"\([^"]*\)".*/\1/p' ;;
+        status) echo "$JSON" | sed -n 's/.*"status":"\([^"]*\)".*/\1/p' ;;
+        species) echo "$JSON" | sed -n 's/.*"species":"\([^"]*\)".*/\1/p' ;;
+        gender) echo "$JSON" | sed -n 's/.*"gender":"\([^"]*\)".*/\1/p' ;;
+        origin) echo "$JSON" | sed -n 's/.*"origin":{"name":"\([^"]*\)".*/\1/p' ;;
+        location) echo "$JSON" | sed -n 's/.*"location":{"name":"\([^"]*\)".*/\1/p' ;;
+        episodes) echo "$JSON" | grep -o 'https://rickandmortyapi.com/api/episode/[0-9]\+' | wc -l ;;
         *) echo "" ;;
     esac
 }
 
 # Funcion para separar objetos JSON en lineas individuales
 separar_objetos_json() {
-    local input_file="$1" output_file="$2"
+    local INPUT_FILE="$1" OUTPUT_FILE="$2"
     awk 'BEGIN{RS="},{"}
   {
     gsub(/^\[/, ""); gsub(/\]$/, ""); gsub(/^{/, ""); gsub(/}$/, ""); gsub(/^ +/, ""); gsub(/ +$/, "")
     if (NF > 0) {
       print "{" $0 "}"
     }
-  }' "$input_file" > "$output_file"
+  }' "$INPUT_FILE" > "$OUTPUT_FILE"
 }
 
 # Funcion para parsear la respuesta de la API
@@ -232,17 +312,17 @@ parsear_respuesta() {
   if [[ -s /tmp/rickandmorty_$$.txt ]]; then
     separar_objetos_json /tmp/rickandmorty_$$.txt /tmp/rickandmorty_separated_$$.txt
 
-    while IFS= read -r json_line; do
-      [[ -z "$json_line" ]] && continue 
+    while IFS= read -r JSON_LINE; do
+      [[ -z "$JSON_LINE" ]] && continue 
     
-      CID=$(parsear_campo "$json_line" "id")
-      NAME=$(parsear_campo "$json_line" "name")
-      STATUS=$(parsear_campo "$json_line" "status")
-      SPECIES=$(parsear_campo "$json_line" "species")
-      GENDER=$(parsear_campo "$json_line" "gender")
-      ORIGIN=$(parsear_campo "$json_line" "origin")
-      LOCATION=$(parsear_campo "$json_line" "location")
-      EPISODES=$(parsear_campo "$json_line" "episodes")
+      CID=$(parsear_campo "$JSON_LINE" "id")
+      NAME=$(parsear_campo "$JSON_LINE" "name")
+      STATUS=$(parsear_campo "$JSON_LINE" "status")
+      SPECIES=$(parsear_campo "$JSON_LINE" "species")
+      GENDER=$(parsear_campo "$JSON_LINE" "gender")
+      ORIGIN=$(parsear_campo "$JSON_LINE" "origin")
+      LOCATION=$(parsear_campo "$JSON_LINE" "location")
+      EPISODES=$(parsear_campo "$JSON_LINE" "episodes")
 
       [[ -z "$CID" ]] && continue
 
@@ -278,12 +358,13 @@ crear_recursos
 if [[ "$CLEAR" == true ]]; then
   limpiar_cache
   exit 0
-elif [[ -n "$ID" ]] && [[ -n "$NOMBRE" ]]; then
+fi
+
+if [[ -n "$ID" ]]; then
   obtener_personajes_por_id
-  obtener_personajes_por_nombre
-elif [[ -n "$ID" ]]; then
-  obtener_personajes_por_id
-elif [[ -n "$NOMBRE" ]]; then
+fi
+
+if [[ -n "$NOMBRE" ]]; then
   obtener_personajes_por_nombre
 fi
 

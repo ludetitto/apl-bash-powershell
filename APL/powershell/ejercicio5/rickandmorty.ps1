@@ -64,13 +64,13 @@ $ErrorActionPreference = 'Stop'
 
 function Validar-Parametros {
     if($Clear) {
-        if(-not (Test-Path "characters_cache.json") -and -not (Test-Path "api_tracking.log")) {
+        if(-not (Test-Path "cache")) {
             Write-Host "No se encontro cache de personajes para limpiar."
             exit 0
         }
-        if(Test-Path "characters_cache.json") {
-            Remove-Item "characters_cache.json" -ErrorAction SilentlyContinue
-        } 
+        if(Test-Path "cache") {
+            Remove-Item "cache" -Recurse -ErrorAction SilentlyContinue
+        }
         if (Test-Path "api_tracking.log") {
             Remove-Item "api_tracking.log" -ErrorAction SilentlyContinue
         }
@@ -82,12 +82,10 @@ function Validar-Parametros {
 
 # Funcion para crear los archivos necesarios
 function Crear-Recursos {
-    if(-Not (Test-Path "characters_cache.json")) {
-        "[]" | Out-File -FilePath "characters_cache.json" -Encoding UTF8
-    }
-
-    if(-Not (Test-Path "api_tracking.log")) {
-        "" | Out-File -FilePath "api_tracking.log" -Encoding UTF8
+    if(-Not (Test-Path  "cache")) {
+        New-Item -ItemType Directory -Name "cache" | Out-Null
+        New-Item -ItemType Directory -Path "cache/id" | Out-Null
+        New-Item -ItemType Directory -Path "cache/nombre" | Out-Null
     }
 }
 
@@ -95,173 +93,91 @@ function Crear-Recursos {
 function Mostrar-Personaje {
     param(
         [Parameter(Mandatory=$true)]
-        $personaje
+        $PERSONAJES
     )
-    Write-Host "`nCharacter info:"
-    Write-Host "    Id: $($personaje.id)"
-    Write-Host "    Name: $($personaje.name)"
-    Write-Host "    Status: $($personaje.status)"
-    Write-Host "    Species: $($personaje.species)"
-    Write-Host "    Gender: $($personaje.gender)"
-    Write-Host "    Origin: $($personaje.origin.name)"
-    Write-Host "    Location: $($personaje.location.name)"
-    Write-Host "    Episodes: $($personaje.episode.Count)"
-}
 
-function Mostrar-Personaje-Cache {
-    param(
-        [Parameter(Mandatory=$true)]
-        $personaje
-    )
-    Write-Host "`nCharacter info:"
-    Write-Host "    Id: $($personaje.id)"
-    Write-Host "    Name: $($personaje.name)"
-    Write-Host "    Status: $($personaje.status)"
-    Write-Host "    Species: $($personaje.species)"
-    Write-Host "    Gender: $($personaje.gender)"
-    Write-Host "    Origin: $($personaje.origin)"
-    Write-Host "    Location: $($personaje.location)"
-    Write-Host "    Episodes: $($personaje.episodes)"
+    foreach($PERSONAJE in $PERSONAJES) {
+        Write-Host "`nCharacter info:"
+        Write-Host "    Id: $($PERSONAJE.id)"
+        Write-Host "    Name: $($PERSONAJE.name)"
+        Write-Host "    Status: $($PERSONAJE.status)"
+        Write-Host "    Species: $($PERSONAJE.species)"
+        Write-Host "    Gender: $($PERSONAJE.gender)"
+        Write-Host "    Origin: $($PERSONAJE.origin.name)"
+        Write-Host "    Location: $($PERSONAJE.location.name)"
+        Write-Host "    Episodes: $($PERSONAJE.episode.Count)"
+    }
 }
 
 # Funcion para buscar personajes en la cache o verificar en el log según el tipo
 function Buscar-En-Cache {
     param(
-        [string]$tipo,
-        [string]$valor
+        [string]$TIPO,
+        [string]$VALOR
     )
 
-    $cacheFile = "characters_cache.json"
-
-    $contenido = Get-Content $cacheFile -Raw -ErrorAction SilentlyContinue
-    if ([string]::IsNullOrWhiteSpace($contenido)) {
-        return $null
-    }
-
-    $cache = $contenido | ConvertFrom-Json -ErrorAction SilentlyContinue
-
-    if($tipo -eq "id") {
-        # Para ID: buscar en characters_cache.json
-        foreach($personaje in $cache) {
-            if ($personaje.id -eq [int]$valor) {
-                Mostrar-Personaje-Cache $personaje
-                return $true
-            }
-        }
-    } elseif($tipo -eq "nombre") {
-        # Para nombre: buscar primero en api_tracking.log y luego en characters_cache.json
-        $existe = $false
-
-        $logFile = "api_tracking.log"
-
-        $contenidoLog = Get-Content $logFile -Raw -ErrorAction SilentlyContinue
-        if ([string]::IsNullOrWhiteSpace($contenido)) {
-            return $null
-        }
-
-        $logs = Get-Content "api_tracking.log" -Raw | ConvertFrom-Json
-
-        $encontrado = $logs | Where-Object {
-            $_.tipo -eq "nombre" -and $_.valor -like "*$valor*"
-        }
-
-        if ($encontrado) {
-            foreach ($personaje in $cache) {
-                if ($personaje.name -like "*$valor*") {
-                    Mostrar-Personaje-Cache $personaje
-                }
-            }
-            return $true
-        }
+    if (Test-Path "cache/$TIPO/$VALOR")
+    {
+        $CACHE = Get-Content "cache/$TIPO/$VALOR" -Raw | ConvertFrom-Json
+        Mostrar-Personaje $CACHE
+        return $true
     }
 
     return $false
 }
 
-# Funcion para guardar personajes en la cache
-function Guardar-En-Cache {
+# Funcion para validar la respuesta de la API
+function Validar-Respuesta {
     param(
-        [Parameter(Mandatory=$true)]
-        $personaje
+        [int]$HTTP_CODE
     )
-    $personaje = @{
-        id = $personaje.id
-        name = $personaje.name
-        status = $personaje.status
-        species = $personaje.species
-        gender = $personaje.gender
-        origin = $personaje.origin.name
-        location = $personaje.location.name
-        episodes = if ($personaje.episode -is [array]) { $personaje.episode.Length } elseif ($personaje.episode) { 1 } else { 0 }
+
+    if($HTTP_CODE -eq 0 -or -not $HTTP_CODE) {
+        Write-Host "Error: No se pudo conectar a la API. Verifique su conexion a internet."
     }
     
-    $contenido = Get-Content "characters_cache.json" -Raw -ErrorAction SilentlyContinue
-    $cacheArray = @()
-    
-    if (-not [string]::IsNullOrWhiteSpace($contenido) -and $contenido -ne "[]") {
-        try {
-            $parsed = $contenido | ConvertFrom-Json -ErrorAction Stop
-            if ($parsed -is [array]) {
-                $cacheArray = @($parsed)
-            } elseif ($parsed.id) {
-                $cacheArray = @($parsed)
-            }
-        } catch {
-            $cacheArray = @()
-        }
+    if($HTTP_CODE -eq 404) {
+        Write-Host "Error: No se encontraron personajes que coincidan con la consulta."
     }
     
-    # Verificar si el personaje ya existe en la cache por ID
-    $existe = $false
-    foreach ($item in $cacheArray) {
-        if ($item.id -eq $personaje.id) {
-            $existe = $true
-            break
-        }
+    if($HTTP_CODE -ge 500) {
+        Write-Host "Error: La API del servidor no esta disponible (HTTP $HTTP_CODE)."
     }
     
-    # Solo agregar si no existe
-    if (-not $existe) {
-        $cacheArray += $personaje
-        # Siempre guardar como un array JSON válido
-        $json = $cacheArray | ConvertTo-Json -Compress
-        $json | Set-Content "characters_cache.json" -Encoding UTF8
+    if($HTTP_CODE -ne 200) {
+        Write-Host "Error: La API devolvio un error HTTP $HTTP_CODE."
     }
 }
 
 # Funcion para obtener personajes por ID
 function Obtener-Personaje-Por-ID {
     param(
-        [int[]]$ids
+        [int[]]$IDS
     )
     
-    foreach($idItem in $ids) {
-        $idItem = $idItem.ToString().Trim()
-        if(-not $idItem) { continue }
+    foreach($ID_ITEM in $IDS) {
+        $ID_ITEM = $ID_ITEM.ToString().Trim()
+        if(-not $ID_ITEM) { continue }
         
-        if(-not (Buscar-En-Cache "id" $idItem)) {
-
-            $uri = "https://rickandmortyapi.com/api/character/$idItem"
+        if(-not (Buscar-En-Cache "id" $ID_ITEM)) {
+            $URI = "https://rickandmortyapi.com/api/character/$ID_ITEM"
             
             try {
-                $response = Invoke-RestMethod -Uri $uri -TimeoutSec 10 -ErrorAction Stop
+                $RESPONSE = Invoke-WebRequest -Uri $URI -TimeoutSec 10 -ErrorAction Stop
+                $HTTP_CODE = $RESPONSE.StatusCode
                 
-                if($response) {
-                    Mostrar-Personaje $response
-                    Guardar-En-Cache $response
-                }
-                    
-                $log = @{
-                    timestamp = (Get-Date).ToString("o")
-                    tipo = "id"
-                    valor = $idItem
-                    endpoint = "/api/character/$idItem"
-                }
-
-                Registrar-Consulta-API $log
+                $CONTENT = $RESPONSE.Content | ConvertFrom-Json
+                Mostrar-Personaje $CONTENT
+                $CONTENT | ConvertTo-Json | Out-File "./cache/id/$ID_ITEM" -Encoding UTF8
             }
-            catch {
-                Write-Host "Error al obtener personaje con ID $idItem : $_"
+            catch [System.Net.Http.HttpRequestException] {
+                if($_.Exception.Response) {
+                    $HTTP_CODE = $_.Exception.Response.StatusCode -as [int]
+                }
+                Validar-Respuesta $HTTP_CODE
+            }
+            catch [System.Net.WebException] {
+                Validar-Respuesta 0
             }
         }
     }
@@ -270,71 +186,45 @@ function Obtener-Personaje-Por-ID {
 # Funcion para obtener personajes por nombre
 function Obtener-Personaje-Por-Nombre {
     param(
-        [string[]]$nombres
+        [string[]]$NOMBRES
     )
 
-    foreach($nombre in $nombres) {
-        $nombre = $nombre.Trim()
-        if(-not $nombre) { continue }
+    foreach($NOMBRE in $NOMBRES) {
+        $NOMBRE = $NOMBRE.Trim()
+        if(-not $NOMBRE) { continue }
         
-        if(-not (Buscar-En-Cache "nombre" $nombre)) {
-            $uri = "https://rickandmortyapi.com/api/character/?name=$nombre"
+        if(-not (Buscar-En-Cache "nombre" $NOMBRE)) {
+            $URI = "https://rickandmortyapi.com/api/character/?name=$NOMBRE"
             
             try {
-                $response = Invoke-RestMethod -Uri $uri -TimeoutSec 10 -ErrorAction Stop
+                $RESPONSE = Invoke-WebRequest -Uri $URI -TimeoutSec 10 -ErrorAction Stop
+                $HTTP_CODE = $RESPONSE.StatusCode
                 
-                if($response.results) {
-                    foreach($personaje in $response.results) {
-                        Mostrar-Personaje $personaje
-                        Guardar-En-Cache $personaje
+                $CONTENT = $RESPONSE.Content | ConvertFrom-Json
+                if($CONTENT.results) {
+                    foreach($PERSONAJE in $CONTENT.results) {
+                        Mostrar-Personaje $PERSONAJE
                     }
-                    
-                    $log = @{
-                        timestamp = (Get-Date).ToString("o")
-                        tipo = "nombre"
-                        valor = $nombre
-                        endpoint = "/api/character/?name=$nombre"
-                    }
-
-                    Registrar-Consulta-API $log
+                    $CONTENT.results | ConvertTo-Json | Out-File "./cache/nombre/$NOMBRE" -Encoding UTF8
                 }
             }
-            catch {
-                Write-Host "Error al obtener personaje con nombre $nombre : $_"
+            catch [System.Net.Http.HttpRequestException] {
+                if($_.Exception.Response) {
+                    $HTTP_CODE = $_.Exception.Response.StatusCode -as [int]
+                }
+                Validar-Respuesta $HTTP_CODE
+            }
+            catch [System.Net.WebException] {
+                Validar-Respuesta 0
             }
         }
     }
-}
-
-# Funcion para registrar consultas a la API
-function Registrar-Consulta-API {
-    param(
-        [Parameter(Mandatory=$true)]
-        $logEntry
-    )
-    
-    $logs = @()
-    
-    $contenido = Get-Content "api_tracking.log" -Raw -ErrorAction SilentlyContinue
-
-    if ($contenido) {
-        $parsed = $contenido | ConvertFrom-Json -ErrorAction SilentlyContinue
-        if ($parsed -is [array]) {
-            $logs = @($parsed)
-        } elseif ($parsed) {
-            $logs = @($parsed)
-        }
-    }
-
-    $logs += $logEntry
-    $logs | ConvertTo-Json -Compress | Set-Content "api_tracking.log" -Encoding UTF8
 }
 
 # Función para mostrar la ruta de los archivos utilizados
-function Mostrar-Path-Archivos {
-    Write-Host "`nINFO: Ruta de archivos utilizados:"
-    Write-Host "    Cache de personajes: $(Get-Item "characters_cache.json").FullName"
-    Write-Host "    Log de consultas a la API: $(Get-Item "api_tracking.log").FullName`n"
+function Mostrar-Path-Cache {
+    Write-Host "`nINFO: Ruta de cache"
+    Write-Host "    Cache de personajes: .\cache"
 }
 
 # Funcionamiento del script
@@ -350,4 +240,4 @@ if($nombre) {
     Obtener-Personaje-Por-Nombre $nombre
 }
 
-Mostrar-Path-Archivos
+Mostrar-Path-Cache
