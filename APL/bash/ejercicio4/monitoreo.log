@@ -1,3 +1,4 @@
-[2026-05-02 14:10:17] Demonio iniciado | Directorio: '/home/ldeti/apl-bash-powershell/APL/bash/ejercicio4/descargas' | Palabras: password token api_key
-[2026-05-02 14:10:17] Procesando archivos existentes en '/home/ldeti/apl-bash-powershell/APL/bash/ejercicio4/descargas' ...
-[2026-05-02 14:10:17] 0 archivos existentes procesados.
+[2026-05-07 20:24:53] Demonio iniciado | Directorio: '/home/cisco/apl-bash-powershell/APL/bash/ejercicio4/descargas' | Palabras: password token api_key
+[2026-05-07 20:24:53] Procesando archivos existentes en '/home/cisco/apl-bash-powershell/APL/bash/ejercicio4/descargas' ...
+[2026-05-07 20:24:53] 0 archivos existentes procesados.
+[2026-05-07 20:24:59] Operación: CLOSE_WRITE,CLOSE | Archivo: '/home/cisco/apl-bash-powershell/APL/bash/ejercicio4/descargas/credenciales.txt' | Palabra: 'password' | Tamaño: 20 bytes
