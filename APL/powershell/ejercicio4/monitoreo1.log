@@ -1,0 +1,5 @@
+
+[2026-05-07 21:48:46] Demonio iniciado | Directorio: '/home/cisco/apl-bash-powershell/APL/powershell/ejercicio4/descargas/otro' | Palabras: password, token, api_key
+[2026-05-07 21:48:46] Procesando archivos existentes en '/home/cisco/apl-bash-powershell/APL/powershell/ejercicio4/descargas/otro' ...
+[2026-05-07 21:48:46] Operación: EXISTENTE  | Archivo: '/home/cisco/apl-bash-powershell/APL/powershell/ejercicio4/descargas/otro/hola.txt' | Palabra: 'password' | Tamaño: 20 bytes
+[2026-05-07 21:48:46] 1 archivos existentes procesados.
