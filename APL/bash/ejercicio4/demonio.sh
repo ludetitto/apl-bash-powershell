@@ -10,7 +10,7 @@
 #       De Titto Lucia                                  #
 #       Gallardo Samuel                                 #
 #       Francisco Vladimir                              #
-#       Medna Ramiro                                    #
+#       Medina Ramiro                                   #
 #                                                       #
 #-------------------------------------------------------#
 
@@ -23,33 +23,36 @@ log_warn(){  echo -e "${YELLOW}[WARN] ${NC}$*"; }
 timestamp(){ date +"%Y-%m-%d %H:%M:%S"; }
 
 show_help() {
-  cat <<'EOF'
-Descripcion:
+  cat << EOF
+Uso:
+  Iniciar demonio
+    $0 -d <directorio> --palabras <pal1,pal2,...> -l <archivo.log>
+
+  Detener demonio
+    $0 -d <directorio> -k
+
+Descripción:
   Script demonio que monitorea un directorio en segundo plano y registra en un
   log cada vez que se crea o modifica un archivo que contenga alguna de las
   palabras clave indicadas.
 
-Uso:
-  Iniciar demonio (OBLIGATORIOS: -d --palabras -l):
-    ./demonio.sh -d <directorio> --palabras <pal1,pal2,...> -l <archivo_log>
-
-  Detener demonio (SOLO -d -k):
-    ./demonio.sh -d <directorio> -k
-
-Flags:
-  -d, --directorio    Ruta del directorio a monitorear
-  -p, --palabras      Palabras clave separadas por comas (ej: password,token,api_key)
-  -l, --log           Ruta del archivo de log
-  -k, --kill          Detiene el demonio del directorio indicado (solo con -d)
+Parámetros:
+  -d, --directorio    Ruta del directorio a monitorear (obligatorio)
+  -p, --palabras      Palabras clave separadas por comas (obligatorio)
+  -l, --log           Ruta del archivo de log (opcional)
+  -k, --kill          Detiene el demonio del directorio indicado
   -h, --help          Muestra esta ayuda
+
+Reglas:
+  - Para detener el demonio debe especificarse el directorio con -d y la flag -k, sin otros parámetros.
 
 Ejemplos:
   mkdir descargas
-  ./demonio.sh -d descargas -p password,token,api_key -l monitoreo.log
-  ./demonio.sh -d descargas -p password,token,api_key -l monitoreo.log   # debe fallar: ya hay un daemon
+  $0 -d descargas -p password,token,api_key -l monitoreo.log
+  $0 -d descargas -p password,token,api_key -l monitoreo.log   # debe fallar: ya hay un daemon
   echo "mi password es 1234" > descargas/credenciales.txt
   cat monitoreo.log
-  ./demonio.sh -d descargas -k
+  $0 -d descargas -k
 EOF
 }
 

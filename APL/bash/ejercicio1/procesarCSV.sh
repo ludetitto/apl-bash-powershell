@@ -1,9 +1,23 @@
 #!/usr/bin/env bash
+#-------------------------------------------------------#
+#               Virtualizacion de Hardware              #
+#                                                       #
+#   APL1                                                #
+#   Nro ejercicio: 1                                    #
+#                                                       #
+#   Integrantes:                                        #
+#       Vignardel Francisco                             #
+#       De Titto Lucia                                  #
+#       Gallardo Samuel                                 #
+#       Francisco Vladimir                              #
+#       Medina Ramiro                                   #
+#                                                       #
+#-------------------------------------------------------#
 
 mostrar_ayuda() {
   cat << EOF
 Uso:
-  $0 -a archivo.csv [opciones]
+  $0 -a <archivo.csv> [opciones]
 
 Descripción:
   Script para procesar archivos CSV, permitiendo filtrar registros,

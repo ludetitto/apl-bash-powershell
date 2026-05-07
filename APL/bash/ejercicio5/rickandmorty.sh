@@ -1,5 +1,18 @@
-#!/bin/bash
-
+#!/usr/bin/env bash
+#-------------------------------------------------------#
+#               Virtualizacion de Hardware              #
+#                                                       #
+#   APL1                                                #
+#   Nro ejercicio: 5                                    #
+#                                                       #
+#   Integrantes:                                        #
+#       Vignardel Francisco                             #
+#       De Titto Lucia                                  #
+#       Gallardo Samuel                                 #
+#       Francisco Vladimir                              #
+#       Medina Ramiro                                   #
+#                                                       #
+#-------------------------------------------------------#
 
 # Declaracion de parametros globales
 ID=""
@@ -11,58 +24,40 @@ trap 'rm -f "/tmp/rickandmorty_$$.txt" "/tmp/rickandmorty_separated_$$.txt"' EXI
 
 # Funcion para mostrar el help con formato similar a man page
 mostrar_ayuda() {
-  cat << 'EOF'
-NOMBRE
-    rickandmorty.sh - busca personajes de Rick and Morty.
+  cat << EOF
+Uso:
+    $0 [opciones]
 
-SINOPSIS
-    rickandmorty.sh [OPCIONES]
-
-DESCRIPCION
+Descripcion:
     Consulta la API de Rick and Morty para obtener informacion sobre personajes.
     Los datos se cachean localmente en el directorio actual para optimizar las consultas posteriores.
 
-ARCHIVOS
-    characters_cache.txt
-        Base de datos local de personajes consultados.
-    
-    api_tracking.log
-        Registro de todas las consultas realizadas a la API.
+Parámetros:
+    -i, --id        ID/s de los personajes a buscar.
+    -n, --nombre    Nombre/s de los personajes a buscar.
+    -c, --clear     Limpia el cache de personajes guardado.
+    -h, --help      Muestra este mensaje de ayuda.
 
-OPCIONES
-    -i, --id [IDs]
-        ID/s de los personajes a buscar. Acepta multiples IDs separados por comas.
-        Ejemplo: ./rickandmorty.sh --id 1,2,3
-                 ./rickandmorty.sh -i 1
+Reglas:
+    - Se pueden buscar multiples personajes a la vez separando los IDs o nombres con comas.
+    - Los nombres no son sensibles a mayusculas/minusculas y pueden contener espacios.
+    - Si se especifica -c/--clear, no se pueden usar opciones de busqueda (-i, -n, --id, --nombre).
+    - El archivo de cache se llama 'characters_cache.txt' y el log de consultas a la API se llama 'api_tracking.log', ambos ubicados en el directorio actual.
 
-    -n, --nombre [NOMBRES]
-        Nombre/s de los personajes a buscar. Acepta multiples nombres separados 
-        por comas. No es sensible a mayusculas/minusculas.
-        Ejemplo: ./rickandmorty.sh --nombre rick,morty
-                 ./rickandmorty.sh -n rick
+Ejemplos:
+    Busqueda por ID
+      $0 -i 1
+      $0 --id "1,2,3"
 
-    -c, --clear
-        Limpia el cache de personajes guardado. No puede utilizarse junto con
-        opciones de busqueda (-i, -n, --id, --nombre).
-        Ejemplo: ./rickandmorty.sh --clear
+    Busqueda por nombre
+      $0 -n rick
+      $0 --nombre "rick,morty"
 
-    -h, --help
-        Muestra este mensaje de ayuda.
+    Busqueda combinada
+      $0 -i 1 -n rick
 
-EJEMPLOS
-    # Busqueda por ID
-    ./rickandmorty.sh -i 1
-    ./rickandmorty.sh --id 1,2,3
-
-    # Busqueda por nombre
-    ./rickandmorty.sh -n rick
-    ./rickandmorty.sh --nombre rick,morty
-
-    # Busqueda combinada
-    ./rickandmorty.sh -i 1 -n rick
-
-    # Limpiar cache
-    ./rickandmorty.sh --clear
+    Limpiar cache
+      $0 --clear
 
 EOF
 }
