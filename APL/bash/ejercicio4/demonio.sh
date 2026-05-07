@@ -70,9 +70,10 @@ get_pid_file() {
   echo "/tmp/demonio_$(echo -n "$DIRECTORIO" | md5sum | cut -d' ' -f1).pid"
 }
 
-get_state_file() {
-  echo "/tmp/demonio_$(echo -n "$DIRECTORIO" | md5sum | cut -d' ' -f1).state"
+get_timestamp_file() {
+  echo "/tmp/demonio_$(echo -n "$DIRECTORIO" | md5sum | cut -d' ' -f1).timestamp"
 }
+
 
 # Devuelve el PID del demonio si está corriendo; si el PID file es huérfano lo limpia
 running_pid() {
@@ -126,9 +127,9 @@ scan_file() {
 # Procesa los archivos que ya estaban en el directorio al arrancar el demonio
 scan_existing_files() {
   local count=0
-  local state_file; state_file="$(get_state_file)"
+  local timestamp_file; timestamp_file="$(get_timestamp_file)"
   local -a find_args=("$DIRECTORIO" -maxdepth 1 -type f)
-  [[ -f "$state_file" ]] && find_args+=(-newer "$state_file")
+  [[ -f "$timestamp_file" ]] && find_args+=(-newer "$timestamp_file")
   log_line "[$(timestamp)] Procesando archivos existentes en '$DIRECTORIO' ..."
   while IFS= read -r -d '' f; do
     scan_file "$f" "EXISTENTE"
@@ -152,12 +153,11 @@ daemon_loop() {
     "$(timestamp)" "$DIRECTORIO" "${PALABRAS[*]}")"
 
   scan_existing_files
-  touch "$(get_state_file)"
 
   # < <(...) en lugar de pipe | para que el while quede en el proceso principal
   while IFS= read -r line; do
     process_inotify_event "$line"
-    touch "$(get_state_file)"  # actualizar tras cada evento procesado
+    touch "$(get_timestamp_file)"
   done < <(inotifywait -m -e close_write,moved_to \
              --format '%e %w%f' "$DIRECTORIO" 2>/dev/null)
 }
@@ -210,28 +210,29 @@ if (( KILL_MODE )); then
   kill -TERM "$pid" 2>/dev/null || true
   sleep 1
   kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" 2>/dev/null || true
-  rm -f "$(get_pid_file)" "$(get_state_file)"
+  rm -f "$(get_pid_file)" "$(get_timestamp_file)"
   log_info "Demonio detenido (PID: $pid)."
   exit 0
 fi
 
 # proceso demonio (relanzado por nohup con DAEMON_MODE=1) ---
 if [[ "${DAEMON_MODE:-0}" == "1" ]]; then
-  trap 'rm -f "$(get_pid_file)" "$(get_state_file)"' EXIT
+  trap 'rm -f "$(get_pid_file)" "$(get_timestamp_file)"' EXIT
   daemon_loop
   exit 0
 fi
 
-# crea el archivo de log 
-mkdir -p -- "$(dirname -- "$LOGFILE")" 2>/dev/null || true
-: > "$LOGFILE" 2>/dev/null || { log_error "No puedo escribir en '$LOGFILE'"; exit 1; }
-
 check_dependencies
+
 # valida si ya hay un demonio corriendo
 pid="$(running_pid)"
 if [[ -n "$pid" ]]; then
   log_error "Ya hay un demonio para este directorio (PID: $pid)."; exit 1
 fi
+
+# crea el archivo de log
+mkdir -p -- "$(dirname -- "$LOGFILE")" 2>/dev/null || true
+: > "$LOGFILE" 2>/dev/null || { log_error "No puedo escribir en '$LOGFILE'"; exit 1; }
 
 # se crea el demonio y guarda su pid
 nohup env DAEMON_MODE=1 "$0" \
