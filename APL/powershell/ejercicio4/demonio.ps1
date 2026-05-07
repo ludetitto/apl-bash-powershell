@@ -96,6 +96,14 @@ function ruta_archivo_pid {
     return [IO.Path]::Combine([IO.Path]::GetTempPath(), "demonio_$hashStr.pid")
 }
 
+function ruta_archivo_estado {
+    param([string]$rutaDirectorio)
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($rutaDirectorio)
+    $hash  = [System.Security.Cryptography.MD5]::Create().ComputeHash($bytes)
+    $hashStr = ($hash | ForEach-Object { $_.ToString('x2') }) -join ''
+    return [IO.Path]::Combine([IO.Path]::GetTempPath(), "demonio_$hashStr.state")
+}
+
 # Verifica si el daemon está corriendo: devuelve su PID o $null si no existe
 function pid_del_daemon_activo {
     param([string]$rutaDirectorio)
@@ -189,12 +197,19 @@ function buscar_palabras_clave_en_archivo {
 # Escanea los archivos que ya estaban en el directorio al momento de iniciar el daemon
 function escanear_archivos_preexistentes {
     param([string]$rutaDirectorio, [string[]]$palabrasClave, [string]$rutaLog)
+    $archivoEstado = ruta_archivo_estado $rutaDirectorio
+    $hayEstado = Test-Path $archivoEstado
+    $ultimaEjecucion = if ($hayEstado) {
+        [datetime]::Parse((Get-Content $archivoEstado -Raw).Trim())
+    } else { $null }
     $cantidadArchivos = 0
     escribir_linea_log ("[{0}] Procesando archivos existentes en '{1}' ..." -f (marca_tiempo), $rutaDirectorio) $rutaLog
-    Get-ChildItem -LiteralPath $rutaDirectorio -File -ErrorAction SilentlyContinue | ForEach-Object {
-        buscar_palabras_clave_en_archivo $_.FullName 'EXISTENTE' $palabrasClave $rutaLog
-        $cantidadArchivos++
-    }
+    Get-ChildItem -LiteralPath $rutaDirectorio -File -ErrorAction SilentlyContinue |
+        Where-Object { -not $hayEstado -or $_.LastWriteTime -gt $ultimaEjecucion } |
+        ForEach-Object {
+            buscar_palabras_clave_en_archivo $_.FullName 'EXISTENTE' $palabrasClave $rutaLog
+            $cantidadArchivos++
+        }
     escribir_linea_log ("[{0}] {1} archivos existentes procesados." -f (marca_tiempo), $cantidadArchivos) $rutaLog
 }
 
@@ -206,6 +221,8 @@ function iniciar_bucle_de_monitoreo {
         (marca_tiempo), $rutaDirectorio, ($palabrasClave -join ', ')) $rutaLog
 
     escanear_archivos_preexistentes $rutaDirectorio $palabrasClave $rutaLog
+    # Guardar el timestamp del escaneo inicial para que un reinicio no reprocese estos archivos
+    (Get-Date).ToString('o') | Out-File -FilePath (ruta_archivo_estado $rutaDirectorio) -Encoding ascii -Force
 
     # FileSystemWatcher es el equivalente a inotifywait en PowerShell
     $watcher = New-Object IO.FileSystemWatcher
@@ -223,6 +240,8 @@ function iniciar_bucle_de_monitoreo {
         $rutaArchivo    = Join-Path $rutaDirectorio $evento.Name
         $tipoOperacion  = $evento.ChangeType.ToString().ToUpper()
         buscar_palabras_clave_en_archivo $rutaArchivo $tipoOperacion $palabrasClave $rutaLog
+        # Actualizar el estado tras cada evento procesado
+        (Get-Date).ToString('o') | Out-File -FilePath (ruta_archivo_estado $rutaDirectorio) -Encoding ascii -Force
     }
 
     $watcher.EnableRaisingEvents = $false
@@ -240,7 +259,8 @@ function detener_daemon {
     }
     try {
         Stop-Process -Id $pidActivo -Force -ErrorAction Stop
-        Remove-Item (ruta_archivo_pid $rutaDirectorio) -Force -ErrorAction SilentlyContinue
+        Remove-Item (ruta_archivo_pid    $rutaDirectorio) -Force -ErrorAction SilentlyContinue
+        Remove-Item (ruta_archivo_estado $rutaDirectorio) -Force -ErrorAction SilentlyContinue
         registrar_info "Daemon detenido (PID: $pidActivo)."
     } catch {
         registrar_error "No se pudo detener el proceso (PID: $pidActivo): $_"
@@ -263,11 +283,11 @@ $archivoLog = ruta_absoluta $Log
 if ($ModoDemonio) {
     # El hijo recibe las palabras como string separado por coma
     $palabrasClave = ($Palabras -join ',') -split ',' | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' }
-    # Limpia el archivo PID al salir
     try {
         iniciar_bucle_de_monitoreo $Directorio $palabrasClave $archivoLog
     } finally {
-        Remove-Item (ruta_archivo_pid $Directorio) -Force -ErrorAction SilentlyContinue
+        Remove-Item (ruta_archivo_pid    $Directorio) -Force -ErrorAction SilentlyContinue
+        Remove-Item (ruta_archivo_estado $Directorio) -Force -ErrorAction SilentlyContinue
     }
     exit 0
 }
