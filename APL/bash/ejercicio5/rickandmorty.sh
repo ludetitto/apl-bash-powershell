@@ -236,9 +236,6 @@ obtener_personajes_por_id() {
 
       echo "$RESPONSE" > "/tmp/rickandmorty_$$.txt"
 
-      for id in "${IDS_A_PEDIR[@]}"; do
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] ID:$id" >> api_tracking.log
-      done
     fi
 }
 
