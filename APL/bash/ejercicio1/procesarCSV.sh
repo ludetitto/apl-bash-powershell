@@ -208,9 +208,7 @@ END {
     if (c == 0) {
       print "Resultados:\nNo se encontraron registros\n"
     } else {
-		if (filtro != "") {
-		  printf "Resultados:\nCantidad de registros = %d\n", c
-		}
+		printf "Resultados:\nCantidad de registros = %d\n", c
     }
   } else {
     if (c == 0) {
