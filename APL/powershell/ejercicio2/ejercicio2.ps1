@@ -1,12 +1,50 @@
 #!/usr/bin/env pwsh
-
+[CmdletBinding(PositionalBinding=$false)]
 param (
-    [Parameter(Mandatory=$true, HelpMessage="Debe especificar el archivo de entrada.")]
+    [Alias('h')]
+    [switch]$help,
+
+    [Alias('a')]
     [string]$archivo,
 
+    [Alias('s')]
     [string]$salida
 )
 
+function Mostrar-Ayuda {
+    $nombreScript = $MyInvocation.MyCommand.Name
+    Write-Host "Uso: .\$nombreScript -a <archivo_entrada> [-s <archivo_salida>]"
+    Write-Host ""
+    Write-Host "Descripción:"
+    Write-Host "  Normaliza un archivo de texto corrigiendo espacios duplicados,"
+    Write-Host "  mayúsculas al inicio de oraciones, y balanceando signos de"
+    Write-Host "  puntuación (abre signos de interrogación '¿' y exclamación '¡' faltantes)."
+    Write-Host "  También ajusta el espaciado correcto después de puntos y comas."
+    Write-Host ""
+    Write-Host "Parámetros:"
+    Write-Host "  -a, -archivo   Ruta del archivo de texto a procesar (obligatorio)."
+    Write-Host "  -s, -salida    Ruta del archivo donde se guardará el resultado (opcional)."
+    Write-Host "                 Si no se informa, el resultado se muestra por pantalla."
+    Write-Host "  -h, -help      Muestra este menú de ayuda."
+    Write-Host ""
+    Write-Host "Ejemplos:"
+    Write-Host "  .\$nombreScript -a archivo.txt"
+    Write-Host "  .\$nombreScript -archivo archivo.txt -salida texto_corregido.txt"
+}
+
+#Si pasaron el parámetro help, muestra la ayuda y sale
+if ($help) {
+    Mostrar-Ayuda
+    exit 0
+}
+
+if (-not $archivo) {
+    Write-Host "Error: Falta el parámetro obligatorio '-archivo'." -ForegroundColor Red
+    Write-Host "Usa '.\$($MyInvocation.MyCommand.Name) -help' para ver las opciones."
+    exit 1
+}
+
+#Validar que el archivo de entrada exista realmente
 if (-not (Test-Path -Path $archivo -PathType Leaf)) {
     Write-Host "Error: El archivo '$archivo' no existe." -ForegroundColor Red
     exit 1
