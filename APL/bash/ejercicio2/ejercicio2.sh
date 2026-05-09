@@ -7,10 +7,19 @@ normalizar(){
 	s/^ //;
 	s/ ([.,;.?!])/\1/g;
 	s/\.{4,}/.../g;
-	s/(^|[,.;:!¡]+[ \t]*)([^¿?.,;:!¡]+)\?/\1¿\2?/g;
-        s/(^|[,.;:?¿]+[ \t]*)([^¡!.,;:?¿]+)!/\1¡\2!/g;
-	s/\.{3} */... /g;
-	s/([,?!]) */\1 /g;
+
+	#Reemplazo los puntos suspensivos por cualquier cosa para que en el agregado de espacio final no moleste
+	s/\.{3,}/__PUNTOS_SUSPENSIVOS__/g;
+	#esto es porque sed no soporta lookbehind como el replace de power, entonces si queda como estas? donde estas?
+        #repite hasta terminar de ponerle el signo a todos
+	:ciclo
+        s/(^|[,.;:!¡?]+[ \t]*)([^¿?.,;:!¡ \t][^¿?.,;:!¡]*)\?/\1¿\2?/g
+        s/(^|[,.;:!¿?]+[ \t]*)([^¡!.,;:?¿ \t][^¡!.,;:?¿]*)!/\1¡\2!/g
+        # Si alguno de los comandos de arriba hizo un cambio, "t" salta a "ciclo" otra vez
+        t ciclo
+
+	s/([,?!.]) */\1 /g;
+	s/__PUNTOS_SUSPENSIVOS__ */... /g;
 	s/'"'"'/"/g;
 	s/ $//;
 	' "$archivo" |
@@ -60,22 +69,46 @@ normalizar(){
 	        }
 	    }
 	    print linea
-	}' > texto_corregido.txt	
+	}'
 }
 
-# 1. Validar cantidad de parámetros
-if [ "$#" -ne 1 ]; then
-        echo "Uso: $0 <archivo>"
-        exit 1
+ARCHIVO=""
+SALIDA=""
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        -a|--archivo)
+            ARCHIVO="$2"
+            shift 2
+            ;;
+        -s|--salida)
+            SALIDA="$2"
+            shift 2
+            ;;
+        *)
+            echo "Uso: $0 -a <archivo_entrada> [-s <archivo_salida>]"
+            exit 1
+            ;;
+    esac
+done
+
+# Validar que el archivo de entrada se haya pasado
+if [ -z "$ARCHIVO" ]; then
+    echo "Uso: $0 -a <archivo_entrada> [-s <archivo_salida>]"
+    exit 1
 fi
 
-ARCHIVO=$1
-
-# 2. Validar que el archivo exista
+# Validar que el archivo de entrada exista
 if [ ! -f "$ARCHIVO" ]; then
-        echo "Error: El archivo '$ARCHIVO' no existe."
-        exit 1
+    echo "Error: El archivo '$ARCHIVO' no existe."
+    exit 1
 fi
 
-# 3. Llamar a la función
-normalizar "$ARCHIVO"
+# Condición de salida por pantalla o guardado en archivo
+if [ -z "$SALIDA" ]; then
+    normalizar "$ARCHIVO"
+else
+    # Si pasaron el parámetro de salida, redirigimos la función al archivo
+    normalizar "$ARCHIVO" > "$SALIDA"
+    echo -e "Proceso completado. Texto guardado en '$SALIDA'"
+fi
