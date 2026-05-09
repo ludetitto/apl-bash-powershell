@@ -30,7 +30,7 @@
     Palabras clave separadas por coma a buscar dentro de los archivos. Ej: password,token,api_key
 
 .PARAMETER Log
-    Ruta del archivo de log donde se registran las coincidencias encontradas.
+    Ruta del archivo de log donde se registran las coincidencias encontradas. Opcional: si no se indica, se crea log.txt en el directorio actual. Si ya existe, se usa log1.txt, log2.txt, etc.
 
 .PARAMETER Kill
     Detiene el demonio activo para el directorio indicado. Solo se usa junto con -Directorio.
@@ -59,9 +59,9 @@ param(
     [Alias("p")]
     [string]$Palabras,
 
-    [Parameter(Mandatory = $true, ParameterSetName = 'Iniciar')]
+    [Parameter(Mandatory = $false, ParameterSetName = 'Iniciar')]
     [Alias("l")]
-    [string]$Log,
+    [string]$Log = '',
 
     [Parameter(Mandatory = $true, ParameterSetName = 'Matar')]
     [Alias("k")]
@@ -105,6 +105,16 @@ function ruta_archivo_estado {
     $hash  = [System.Security.Cryptography.MD5]::Create().ComputeHash($bytes)
     $hashStr = ($hash | ForEach-Object { $_.ToString('x2') }) -join ''
     return [IO.Path]::Combine([IO.Path]::GetTempPath(), "demonio_$hashStr.state")
+}
+
+# Genera un nombre de log disponible en el directorio actual: log.txt, log1.txt, log2.txt, ...
+function generar_nombre_log {
+    $dir = (Get-Location).Path
+    $candidato = Join-Path $dir 'log.txt'
+    if (-not (Test-Path $candidato)) { return $candidato }
+    $i = 1
+    while (Test-Path (Join-Path $dir "log${i}.txt")) { $i++ }
+    return Join-Path $dir "log${i}.txt"
 }
 
 # Verifica si el daemon está corriendo: devuelve su PID o $null si no existe
@@ -315,7 +325,7 @@ if ($Kill) {
     exit 0
 }
 
-$archivoLog = ruta_absoluta $Log
+$archivoLog = if (-not [string]::IsNullOrWhiteSpace($Log)) { ruta_absoluta $Log } else { '' }
 
 # Modo daemon (hijo relanzado): variable interna que indica que ya es el proceso en segundo plano
 if ($ModoDemonio) {
@@ -343,6 +353,12 @@ if ($null -ne $pidExistente) {
     exit 1
 }
 
+# Si no se especificó -Log, generar nombre automáticamente en el directorio actual
+if ([string]::IsNullOrWhiteSpace($archivoLog)) {
+    $archivoLog = generar_nombre_log
+    registrar_info "Archivo de log generado automáticamente: $archivoLog"
+}
+
 # Prevenir que dos demonios usen el mismo archivo de log
 verificar_log_disponible $archivoLog
 
@@ -352,7 +368,7 @@ if ($dirLog -and -not (Test-Path $dirLog)) {
     New-Item -ItemType Directory -Path $dirLog -Force | Out-Null
 }
 try {
-    '' | Out-File -LiteralPath $archivoLog -Encoding UTF8 -Force
+    [IO.File]::WriteAllText($archivoLog, '')
 } catch {
     registrar_error "No puedo escribir en '$archivoLog'."
     exit 1

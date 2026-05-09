@@ -26,7 +26,7 @@ show_help() {
   cat << EOF
 Uso:
   Iniciar demonio
-    $0 -d <directorio> --palabras <pal1,pal2,...> -l <archivo.log>
+    $0 -d <directorio> --palabras <pal1,pal2,...> [-l <archivo.log>]
 
   Detener demonio
     $0 -d <directorio> -k
@@ -39,19 +39,20 @@ Descripción:
 Parámetros:
   -d, --directorio    Ruta del directorio a monitorear (obligatorio)
   -p, --palabras      Palabras clave separadas por comas (obligatorio)
-  -l, --log           Ruta del archivo de log (obligatorio)
+  -l, --log           Ruta del archivo de log (opcional, se genera automáticamente si no se indica)
   -k, --kill          Detiene el demonio del directorio indicado
   -h, --help          Muestra esta ayuda
 
 Reglas:
   - Para detener el demonio debe especificarse el directorio con -d y la flag -k, sin otros parámetros.
+  - Si no se especifica -l, se crea log.txt en el directorio actual. Si ya existe, se usa log1.txt, log2.txt, etc.
+  - Si se especifica -l y el archivo ya está en uso por otro demonio, el inicio falla.
 
 Ejemplos:
   mkdir descargas
   $0 -d descargas -p password,token,api_key -l monitoreo.log
-  $0 -d descargas -p password,token,api_key -l monitoreo.log   # debe fallar: ya hay un daemon
+  $0 -d descargas -p password,token,api_key
   echo "mi password es 1234" > descargas/credenciales.txt
-  cat monitoreo.log
   $0 -d descargas -k
 EOF
 }
@@ -72,6 +73,18 @@ ruta_archivo_pid() {
 
 ruta_archivo_estado() {
   echo "/tmp/demonio_$(echo -n "$DIRECTORIO" | md5sum | cut -d' ' -f1).timestamp"
+}
+
+# Genera un nombre de log disponible en el directorio actual: log.txt, log1.txt, log2.txt, ...
+generar_nombre_log() {
+  local dir; dir="$(pwd)"
+  local candidato="${dir}/log.txt"
+  [[ ! -f "$candidato" ]] && { echo "$candidato"; return; }
+  local i=1
+  while [[ -f "${dir}/log${i}.txt" ]]; do
+    i=$(( i + 1 ))
+  done
+  echo "${dir}/log${i}.txt"
 }
 
 
@@ -150,7 +163,7 @@ buscar_palabras_clave_en_archivo() {
   local pal
   for pal in "${PALABRAS[@]}"; do
     [[ -z "$pal" ]] && continue
-    if LC_ALL=C grep -qi -- "$pal" "$filepath" 2>/dev/null; then
+    if LC_ALL=C grep -qiF -- "$pal" "$filepath" 2>/dev/null; then
       escribir_linea_log "$(printf "[%s] Operación: %-10s | Archivo: '%s' | Palabra: '%s' | Tamaño: %s bytes" \
         "$(marca_tiempo)" "$operacion" "$filepath" "$pal" "$size")"
     fi
@@ -221,8 +234,6 @@ else
     && { registrar_error "Falta -d/--directorio"; exit 1; }
   [[ -z "$PALABRAS_STR" ]] \
     && { registrar_error "Falta --palabras"; exit 1; }
-  [[ -z "$LOGFILE" ]]  \
-    && { registrar_error "Falta -l/--log"; exit 1; }
 fi
 
 [[ -d "$DIRECTORIO" ]] || { registrar_error "El directorio '$DIRECTORIO' no existe"; exit 1; }
@@ -264,6 +275,12 @@ if [[ -n "$pid" ]]; then
   registrar_error "Ya hay un demonio para este directorio (PID: $pid)."; exit 1
 fi
 
+# Si no se especificó -l, generar nombre de log automáticamente
+if [[ -z "$LOGFILE" ]]; then
+  LOGFILE="$(generar_nombre_log)"
+  registrar_info "Archivo de log generado automáticamente: $LOGFILE"
+fi
+
 # valida que el log no esté en uso por otro demonio
 verificar_log_disponible
 
@@ -272,7 +289,7 @@ mkdir -p -- "$(dirname -- "$LOGFILE")" 2>/dev/null || true
 : > "$LOGFILE" 2>/dev/null || { registrar_error "No puedo escribir en '$LOGFILE'"; exit 1; }
 
 # se crea el demonio y guarda su pid
-nohup env DAEMON_MODE=1 "$0" -d "$DIRECTORIO" --palabras "$PALABRAS_STR" -l "$LOGFILE" >/dev/null 2>&1 &
+nohup env DAEMON_MODE=1 bash "$(ruta_absoluta "$0")" -d "$DIRECTORIO" --palabras "$PALABRAS_STR" -l "$LOGFILE" >/dev/null 2>&1 &
 child_pid=$!
 echo "$child_pid" > "$(ruta_archivo_pid)"
 
