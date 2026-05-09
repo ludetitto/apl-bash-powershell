@@ -143,16 +143,16 @@ function verificar_log_disponible {
 }
 
 function registrar_log_en_uso {
-    param([string]$pid, [string]$rutaLog)
+    param([string]$pidDemonio, [string]$rutaLog)
     $registry = [IO.Path]::Combine([IO.Path]::GetTempPath(), 'demonio_logs.registry')
-    Add-Content -LiteralPath $registry -Value "$pid|$rutaLog" -Encoding ascii
+    Add-Content -LiteralPath $registry -Value "$pidDemonio|$rutaLog" -Encoding ascii
 }
 
 function liberar_log_en_uso {
-    param([string]$pid)
+    param([string]$pidDemonio)
     $registry = [IO.Path]::Combine([IO.Path]::GetTempPath(), 'demonio_logs.registry')
     if (-not (Test-Path $registry)) { return }
-    $lineas = Get-Content $registry -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch "^${pid}\|" }
+    $lineas = Get-Content $registry -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch "^${pidDemonio}\|" }
     if ($null -eq $lineas) { $lineas = @() }
     $lineas | Set-Content -LiteralPath $registry -Encoding ascii
 }
