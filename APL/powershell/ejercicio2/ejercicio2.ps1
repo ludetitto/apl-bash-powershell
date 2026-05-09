@@ -1,70 +1,119 @@
-param(
-    [Parameter(
-        Mandatory = $true,
-        HelpMessage = "Debe proporcionar la ruta a un archivo."
-    )]
+#!/usr/bin/env pwsh
 
-    [ValidateScript({
-        if (!(Test-Path $_ -PathType Leaf)) {
-            throw "El archivo '$_' no existe."
-        }
+param (
+    [Parameter(Mandatory=$true, HelpMessage="Debe especificar el archivo de entrada.")]
+    [string]$archivo,
 
-        return $true
-    })]
-
-    [string]$Archivo
+    [string]$salida
 )
 
+if (-not (Test-Path -Path $archivo -PathType Leaf)) {
+    Write-Host "Error: El archivo '$archivo' no existe." -ForegroundColor Red
+    exit 1
+}
+
 function Normalizar-Texto {
-    param([string]$RutaArchivo)
-    $texto = Get-Content -Path $RutaArchivo -Raw -Encoding UTF8
+    param (
+        [string]$RutaArchivo,
+        [string]$RutaSalida
+    )
 
-   
-    $texto = $texto -replace ' +', ' ' `
-                    -replace '(?m)^ ', '' `
-                    -replace ' ([.,;?!])', '$1' `
-                    -replace '\.{4,}', '...' `
-                    -replace "(^|[,.;:!¡]+\s*)([^¿?.,;:!¡]+)\?", '$1¿$2?' `
-                    -replace "(^|[,.;:?¿]+\s*)([^¡!.,;:?¿]+)!", '$1¡$2!' `
-                    -replace '\.{3} *', '... ' `
-                    -replace '([,?!]) *', '$1 ' `
-                    -replace "'", '"' `
-                    -replace '(?m) $', ''
+    # Lee línea por línea como hace sed por defecto
+    $lineasOriginales = Get-Content -Path $RutaArchivo
+    $lineasFase1 = @()
 
-    $parrafos = $texto -split "\r?\n\r?\n"
-    
-    $parrafosProcesados = foreach ($p in $parrafos) {
-        if ([string]::IsNullOrWhiteSpace($p)) { continue }
+    foreach ($linea in $lineasOriginales) {
+        $l = $linea -replace ' +', ' '
+        $l = $l -replace '^ ', ''
+        $l = $l -replace ' ([.,;.?!])', '$1'
+        $l = $l -replace '\.{4,}', '...'
         
-        $p = $p.TrimEnd()
+        $l = $l -replace '(?<=^|[,.;:!¡?]+[ \t]*)([^¿?.,;:!¡\s][^¿?.,;:!¡]*)\?', '¿$1?'
+	$l = $l -replace '(?<=^|[,.;:!¡?]+[ \t]*)([^¡!.,;:?¿\s][^¡!.,;:?¿]*)!', '¡$1!'
+        
+        $l = $l -replace '\.{3} *', '... '
+        $l = $l -replace '([,?!]) *', '$1 '
+	#Agrego esta linea para evitar que le agregue espacio entre puntos suspensivos mirando a los caracteres vecinos 
+	$l = $l -replace '(?<!\.)\.(?!\.)[ \t]*', '. '
+       
+        $l = $l.Replace("'", '"')
+        $l = $l -replace ' $', ''
+        
+        $lineasFase1 += $l
+    }
 
+    #Se une con salto de lineas para trabajarlo como parrafos
+    $textoSed = $lineasFase1 -join "`n"
+
+    #Separa por bloques de líneas vacías
+    $parrafos = [System.Text.RegularExpressions.Regex]::Split($textoSed, '\n\s*\n')
+    $parrafosProcesados = @()
+
+    foreach ($p in $parrafos) {
+        if ([string]::IsNullOrWhiteSpace($p)) { continue }
+
+        #Saco los espacios y salto de linea al final
+        $p = $p -replace '[\s\n]+$', ''
+
+        # Si encuentra un "¡" y ningun "!" después de él
         if ($p -match '¡[^!]*$') {
             $p = ($p -replace '[.!?]*$', '') + '!'
         }
+        # Si encuentra un "¿" y ningun "?" después de él
         elseif ($p -match '¿[^?]*$') {
             $p = ($p -replace '[.!?]*$', '') + '?'
         }
-        elseif ($p -notmatch '[.!?]$' -and $p.Length -gt 0) {
-            $p = $p + '.'
+        # Si todo estaba bien cerrado, verifico que tenga punto final
+        elseif ($p -notmatch '[.!?]$') {
+            $p += '.'
         }
-        $p
-    }
-    
-    
-    $texto = $parrafosProcesados -join "`r`n`r`n"
 
-    
-    
-    $evaluador = [System.Text.RegularExpressions.MatchEvaluator] {
-        param($match)
-        $match.Value.ToUpper()
+        $parrafosProcesados += $p
     }
-    
-    $patron = '(?<=^|[\r\n]+|[.!?]\s+)[a-záéíóúñ]'
-    $texto = [regex]::Replace($texto, $patron, $evaluador, 'IgnoreCase')
 
-    Set-Content -Path "texto_corregido.txt" -Value $texto -Encoding UTF8
-    Write-Host "Archivo normalizado guardado en 'texto_corregido.txt'" -ForegroundColor Green
+    #Se unen todos los parrafos para ponerle las mayusculas
+    $textoAwk1 = $parrafosProcesados -join "`n`n"
+
+    $lineasAwk2 = $textoAwk1 -split '\n'
+    $mayus = $true
+    $lineasFinales = @()
+
+    foreach ($linea in $lineasAwk2) {
+        # awk: if (length($0) == 0) { mayus = 1; print ""; next }
+        if ($linea.Length -eq 0 -or $linea -match '^\r?$') {
+            $mayus = $true
+            $lineasFinales += ""
+            continue
+        }
+
+        $chars = $linea.ToCharArray()
+        $lineaArmada = ""
+
+        for ($i = 0; $i -lt $chars.Length; $i++) {
+            $c = $chars[$i]
+            
+            if ($mayus -and $c -match '[a-zA-ZáéíóúÁÉÍÓÚñÑ]') {
+                $lineaArmada += [string]::new($c).ToUpper()
+                $mayus = $false
+            }
+            else {
+                $lineaArmada += $c
+                if ($c -match '[.!?]') {
+                    $mayus = $true
+                }
+            }
+        }
+        $lineasFinales += $lineaArmada
+    }
+
+    # Generar salida
+    $textoFinal = $lineasFinales -join "`n"
+    if ([string]::IsNullOrWhiteSpace($RutaSalida)) {
+        Write-Output $textoFinal
+    } else {
+        $textoFinal | Out-File -FilePath $RutaSalida -Encoding UTF8
+        Write-Host "Proceso completado. Texto guardado en '$RutaSalida'." -ForegroundColor Green
+    }
 }
 
-Normalizar-Texto -RutaArchivo $Archivo
+Normalizar-Texto -RutaArchivo $archivo -RutaSalida $salida
