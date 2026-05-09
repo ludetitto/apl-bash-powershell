@@ -39,7 +39,7 @@ Descripción:
 Parámetros:
   -d, --directorio    Ruta del directorio a monitorear (obligatorio)
   -p, --palabras      Palabras clave separadas por comas (obligatorio)
-  -l, --log           Ruta del archivo de log (opcional)
+  -l, --log           Ruta del archivo de log (obligatorio)
   -k, --kill          Detiene el demonio del directorio indicado
   -h, --help          Muestra esta ayuda
 
