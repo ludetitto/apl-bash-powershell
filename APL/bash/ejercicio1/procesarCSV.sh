@@ -156,11 +156,13 @@ NR==1 {
   # Validar columnas una sola vez
   if (filtro != "" && !(filtro in headers)) {
     print "Error: campo de filtro no existe"
+	error_flag = 1
     exit 1
   }
 
   if (sumar != "" && !(sumar in headers)) {
     print "Error: campo de suma no existe"
+	error_flag = 1
     exit 1
   }
 

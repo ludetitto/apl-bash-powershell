@@ -30,7 +30,7 @@
     Palabras clave separadas por coma a buscar dentro de los archivos. Ej: password,token,api_key
 
 .PARAMETER Log
-    Ruta del archivo de log donde se registran las coincidencias encontradas. Opcional: si no se indica, se crea log.txt en el directorio actual. Si ya existe, se usa log1.txt, log2.txt, etc.
+    Ruta del archivo de log donde se registran las coincidencias encontradas.
 
 .PARAMETER Kill
     Detiene el demonio activo para el directorio indicado. Solo se usa junto con -Directorio.
@@ -59,9 +59,9 @@ param(
     [Alias("p")]
     [string]$Palabras,
 
-    [Parameter(Mandatory = $false, ParameterSetName = 'Iniciar')]
+    [Parameter(Mandatory = $true, ParameterSetName = 'Iniciar')]
     [Alias("l")]
-    [string]$Log = '',
+    [string]$Log,
 
     [Parameter(Mandatory = $true, ParameterSetName = 'Matar')]
     [Alias("k")]
@@ -107,16 +107,6 @@ function ruta_archivo_estado {
     return [IO.Path]::Combine([IO.Path]::GetTempPath(), "demonio_$hashStr.state")
 }
 
-# Genera un nombre de log disponible en el directorio actual: log.txt, log1.txt, log2.txt, ...
-function generar_nombre_log {
-    $dir = (Get-Location).Path
-    $candidato = Join-Path $dir 'log.txt'
-    if (-not (Test-Path $candidato)) { return $candidato }
-    $i = 1
-    while (Test-Path (Join-Path $dir "log${i}.txt")) { $i++ }
-    return Join-Path $dir "log${i}.txt"
-}
-
 # Verifica si el daemon está corriendo: devuelve su PID o $null si no existe
 function pid_del_daemon_activo {
     param([string]$rutaDirectorio)
@@ -153,16 +143,16 @@ function verificar_log_disponible {
 }
 
 function registrar_log_en_uso {
-    param([string]$pidDemonio, [string]$rutaLog)
+    param([string]$pid, [string]$rutaLog)
     $registry = [IO.Path]::Combine([IO.Path]::GetTempPath(), 'demonio_logs.registry')
-    Add-Content -LiteralPath $registry -Value "$pidDemonio|$rutaLog" -Encoding ascii
+    Add-Content -LiteralPath $registry -Value "$pid|$rutaLog" -Encoding ascii
 }
 
 function liberar_log_en_uso {
-    param([string]$pidDemonio)
+    param([string]$pid)
     $registry = [IO.Path]::Combine([IO.Path]::GetTempPath(), 'demonio_logs.registry')
     if (-not (Test-Path $registry)) { return }
-    $lineas = Get-Content $registry -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch "^${pidDemonio}\|" }
+    $lineas = Get-Content $registry -ErrorAction SilentlyContinue | Where-Object { $_ -notmatch "^${pid}\|" }
     if ($null -eq $lineas) { $lineas = @() }
     $lineas | Set-Content -LiteralPath $registry -Encoding ascii
 }
@@ -325,7 +315,7 @@ if ($Kill) {
     exit 0
 }
 
-$archivoLog = if (-not [string]::IsNullOrWhiteSpace($Log)) { ruta_absoluta $Log } else { '' }
+$archivoLog = ruta_absoluta $Log
 
 # Modo daemon (hijo relanzado): variable interna que indica que ya es el proceso en segundo plano
 if ($ModoDemonio) {
@@ -353,12 +343,6 @@ if ($null -ne $pidExistente) {
     exit 1
 }
 
-# Si no se especificó -Log, generar nombre automáticamente en el directorio actual
-if ([string]::IsNullOrWhiteSpace($archivoLog)) {
-    $archivoLog = generar_nombre_log
-    registrar_info "Archivo de log generado automáticamente: $archivoLog"
-}
-
 # Prevenir que dos demonios usen el mismo archivo de log
 verificar_log_disponible $archivoLog
 
@@ -368,7 +352,7 @@ if ($dirLog -and -not (Test-Path $dirLog)) {
     New-Item -ItemType Directory -Path $dirLog -Force | Out-Null
 }
 try {
-    [IO.File]::WriteAllText($archivoLog, '')
+    '' | Out-File -LiteralPath $archivoLog -Encoding UTF8 -Force
 } catch {
     registrar_error "No puedo escribir en '$archivoLog'."
     exit 1
