@@ -1,98 +1,273 @@
+#-------------------------------------------------------#
+#               Virtualizacion de Hardware              #
+#                                                       #
+#   APL1                                                #
+#   Nro ejercicio: 1                                    #
+#                                                       #
+#   Integrantes:                                        #
+#       Vignardel Francisco                             #
+#       De Titto Lucia                                  #
+#       Gallardo Samuel                                 #
+#       Francisco Vladimir                              #
+#       Medina Ramiro                                   #
+#                                                       #
+#-------------------------------------------------------#
 
-param (
-    [Alias("a")]
-    [string]$archivo,
+<#
+.SYNOPSIS
+    Script para procesar archivos CSV, permitiendo filtrar registros, contar filas o sumar valores de una columna.
 
-    [Alias("f")]
-    [string]$filtro,
+.DESCRIPTION
+    Este script permite analizar un archivo CSV aplicando un filtro de texto sobre un campo específico. 
+    Luego, dependiendo de la opción elegida, puede contar la cantidad de registros que cumplen el filtro o sumar los valores de un campo numérico para esos registros.
+    El filtro es de tipo "contiene" y no distingue mayúsculas de minúsculas.
+	
+	Sintaxis:
+        ./procesarCSV.ps1 -a <archivo.csv> [-f <campo>] [-b <valor>] (-c | -s <campo>)
 
-    [Alias("b")]
-    [string]$buscar,
+    Parámetros:
+        -a, --archivo   Archivo CSV de entrada
+        -f, --filtro    Campo para filtrar
+        -b, --buscar    Valor a buscar
+        -c, --contar    Cuenta registros
+        -s, --sumar     Suma un campo numérico
+	
+	Ejemplos:
+    
+		./procesarCSV.ps1 -a censo.csv -c
+		Cuenta la cantidad total de registros en el archivo censo.csv.
 
-    [Alias("s")]
-    [string]$sumar,
+		./procesarCSV.ps1 -a censo.csv -f Ciudad -b "San" -c
+		Cuenta la cantidad de registros donde el campo Ciudad contiene "San".
 
-    [Alias("c")]
-    [switch]$contar,
+		./procesarCSV.ps1 -a clientes.csv -f Apellido -b "Perez" -s Saldo
+		Suma el campo Saldo para los registros donde el campo Apellido contiene "Perez".
+	
+#>
 
-    [Alias("h")]
-    [switch]$help
-)
+# =========================
+# Variables
+# =========================
 
-function Mostrar-Ayuda {
-@"
+$archivo = ""
+$filtro = ""
+$buscar = ""
+$sumar = ""
+$contar = $false
 
-Uso:
-  ./procesarCSV.ps1 -a archivo.csv [opciones]
+# =========================
+# Funciones
+# =========================
 
-Descripción:
-  Script para procesar archivos CSV, permitiendo filtrar registros,
-  contar filas o sumar valores de una columna.
+function Mostrar-Error {
+    param (
+        [string]$Mensaje
+    )
 
-Parámetros:
-  -a, -archivo   Archivo CSV de entrada (obligatorio)
-  -f, -filtro    Nombre del campo para filtrar (opcional)
-  -b, -buscar    Valor a buscar en el campo filtro (requerido si se usa -f)
-  -c, -contar    Cuenta la cantidad de registros
-  -s, -sumar     Suma los valores de un campo numérico
-  -h, -help      Muestra esta ayuda
-  
-Reglas:
-  - Debe indicar -c o -s (no ambos)
-  - -b requiere -f
-  - El filtro es opcional
-  - Los nombres de columnas o valores pueden ser escritos tanto en minusculas como en mayusculas
-
-Ejemplos:
-  ./procesarCSV.ps1 -a censo.csv -c
-  ./procesarCSV.ps1 -a censo.csv -f Ciudad -b "San" -c
-  ./procesarCSV.ps1 -a clientes.csv -f Apellido -b "Perez" -s Saldo
-  
-  
-"@
+    Write-Host $Mensaje -ForegroundColor Red
+    exit 1
 }
 
-if ($help) {
-    Mostrar-Ayuda
-    exit 0
+function Mostrar-Resultados {
+    param (
+        [string]$Filtro,
+        [string]$Buscar,
+        [bool]$Contar,
+        [int]$Cantidad,
+        [double]$Suma
+    )
+
+    Write-Host ""
+    Write-Host "-----------------------------" -ForegroundColor Cyan
+
+    if ($Filtro) {
+        Write-Host "Filtro aplicado: '$Filtro' = '$Buscar'"
+    }
+    else {
+        Write-Host "Filtro aplicado: ninguno"
+        Write-Host ""
+    }
+
+    if ($Contar) {
+        if ($Cantidad -eq 0) {
+            Write-Host "Resultados:"
+            Write-Host "No se encontraron registros"
+        }
+        else {
+            Write-Host "Resultados:"
+            Write-Host "Cantidad de registros = $Cantidad"
+        }
+    }
+    else {
+        if ($Cantidad -eq 0) {
+            Write-Host "Resultado:"
+            Write-Host "No se encontraron registros para sumar"
+        }
+        else {
+            Write-Host "Resultados:"
+            Write-Host ("Suma total = {0:F2}" -f $Suma)
+        }
+    }
+
+    Write-Host "-----------------------------" -ForegroundColor Cyan
+    Write-Host ""
 }
 
 # =========================
-# Validaciones
+# Parseo de parámetros
+# =========================
+
+$i = 0
+
+while ($i -lt $args.Count) {
+
+    switch ($args[$i]) {
+
+        # -------------------------
+        # ARCHIVO
+        # -------------------------
+
+        { $_ -in @("-a","--archivo") } {
+
+            if ($archivo) {
+                Mostrar-Error "Error: -a ya fue especificado"
+                exit 1
+            }
+
+            if ($i + 1 -ge $args.Count -or $args[$i + 1] -match "^-") {
+                Mostrar-Error "Error: -a requiere un archivo"
+                exit 1
+            }
+
+            $archivo = $args[$i + 1]
+            $i += 2
+        }
+
+        # -------------------------
+        # FILTRO
+        # -------------------------
+
+        { $_ -in @("-f","--filtro") } {
+
+            if ($filtro) {
+                Mostrar-Error "Error: -f ya fue especificado"
+                exit 1
+            }
+
+            if ($i + 1 -ge $args.Count -or $args[$i + 1] -match "^-") {
+                Mostrar-Error "Error: si usa -f debe especificar la columna"
+                exit 1
+            }
+
+            $filtro = $args[$i + 1]
+            $i += 2
+        }
+
+        # -------------------------
+        # BUSCAR
+        # -------------------------
+
+        { $_ -in @("-b","--buscar") } {
+
+            if ($buscar) {
+                Mostrar-Error "Error: -b ya fue especificado"
+                exit 1
+            }
+
+            if ($i + 1 -ge $args.Count -or $args[$i + 1] -match "^-") {
+                Mostrar-Error "Error: si usa -b debe especificar qué desea buscar"
+                exit 1
+            }
+
+            $buscar = $args[$i + 1]
+            $i += 2
+        }
+
+        # -------------------------
+        # SUMAR
+        # -------------------------
+
+        { $_ -in @("-s","--sumar") } {
+
+            if ($sumar) {
+				Mostrar-Error "Error: -s ya fue especificado"
+                exit 1
+            }
+
+            if ($i + 1 -ge $args.Count -or $args[$i + 1] -match "^-") {
+                Mostrar-Error "Error: si usa -s debe especificar sobre qué campo sumar"
+                exit 1
+            }
+
+            $sumar = $args[$i + 1]
+            $i += 2
+        }
+
+        # -------------------------
+        # CONTAR
+        # -------------------------
+
+        { $_ -in @("-c","--contar") } {
+
+            if ($contar) {
+                Mostrar-Error "Error: -c ya fue especificado"
+                exit 1
+            }
+
+            $contar = $true
+            $i++
+        }
+
+        # -------------------------
+        # PARÁMETRO DESCONOCIDO
+        # -------------------------
+
+        default {
+            Mostrar-Error "Error: parámetro desconocido -> $($args[$i])"
+            exit 1
+        }
+    }
+}
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+# =========================
+# Validaciones generales
 # =========================
 
 if (-not $archivo) {
-    Write-Host "Error: Debe indicar archivo con -a"
+    Mostrar-Error "Error: debe indicar archivo con -a"
     exit 1
 }
 
-if (-not (Test-Path $archivo)) {
-    Write-Host "Error: el archivo no existe"
+if (-not (Test-Path $archivo -PathType Leaf)) {
+    Mostrar-Error "Error: el archivo no existe" -ForegroundColor Red
     exit 1
 }
 
-if ($archivo -notlike "*.csv") {
-    Write-Host "Error: el archivo debe tener extensión .csv"
+if ([System.IO.Path]::GetExtension($archivo).ToLower() -ne ".csv") {
+    Mostrar-Error "Error: el archivo debe tener extensión .csv"
     exit 1
 }
 
 if ($contar -and $sumar) {
-    Write-Host "Error: no se puede usar -c y -s juntos"
+    Mostrar-Error "Error: no se puede usar -c y -s juntos"
     exit 1
 }
 
 if (-not $contar -and -not $sumar) {
-    Write-Host "Error: debe usar -c o -s"
+    Mostrar-Error "Error: debe usar -c o -s"
     exit 1
 }
 
 if ($filtro -and -not $buscar) {
-    Write-Host "Error: si usa -f debe usar -b"
+    Mostrar-Error "Error: si usa -f debe usar -b"
     exit 1
 }
 
 if ($buscar -and -not $filtro) {
-    Write-Host "Error: -b requiere -f"
+    Mostrar-Error "Error: -b requiere -f"
     exit 1
 }
 
@@ -100,22 +275,23 @@ if ($buscar -and -not $filtro) {
 # Lectura CSV
 # =========================
 
-$data = Import-Csv $archivo
-
-if (-not $data) {
-    Write-Host "Error: el archivo está vacío o no es válido"
+try {
+    $data = Import-Csv $Archivo -ErrorAction Stop
+}
+catch {
+    Mostrar-Error "Error: no se pudo leer el archivo '$Archivo'. Asegúrese de que el archivo existe y es un CSV válido."
     exit 1
 }
 
 $headers = $data[0].PSObject.Properties.Name | ForEach-Object { $_.ToLower() }
 
 if ($filtro -and ($headers -notcontains $filtro.ToLower())) {
-    Write-Host "Error: campo de filtro no existe"
+    Mostrar-Error "Error: campo de filtro no existe"
     exit 1
 }
 
 if ($sumar -and ($headers -notcontains $sumar.ToLower())) {
-    Write-Host "Error: campo de suma no existe"
+    Mostrar-Error "Error: campo de suma no existe"
     exit 1
 }
 
@@ -143,9 +319,7 @@ foreach ($row in $data) {
         $valor = $row.$sumar
 
         if (-not ($valor -match '^-?[0-9]+(\.[0-9]+)?$')) {
-            Write-Host ""
-            Write-Host "Error: el campo '$sumar' contiene valores no numéricos."
-            Write-Host ""
+            Mostrar-Error "Error: el campo '$sumar' contiene valores no numéricos."
             $error_flag = $true
             break
         }
@@ -163,38 +337,9 @@ if ($error_flag) {
 # Salida
 # =========================
 
-Write-Host ""
-Write-Host "-----------------------------"
-
-if ($filtro) {
-    Write-Host "Filtro aplicado: '$filtro' = '$buscar'"
-}
-else {
-    Write-Host "Filtro aplicado: ninguno"
-    Write-Host ""
-}
-
-if ($contar) {
-    if ($c -eq 0) {
-        Write-Host "Resultados:"
-        Write-Host "No se encontraron registros"
-    }
-    else {
-        Write-Host "Resultados:"
-        Write-Host "Cantidad de registros = $c"
-    }
-}
-else {
-    if ($c -eq 0) {
-        Write-Host "Resultado:"
-		Write-Host "No se encontraron registros para sumar"
-    }
-    else {
-        $s = [math]::Round($s, 2)
-        Write-Host "Resultados:"
-		Write-Host "Suma total = $s"
-    }
-}
-
-Write-Host "-----------------------------"
-Write-Host ""
+Mostrar-Resultados `
+    -Filtro $filtro `
+    -Buscar $buscar `
+    -Contar $contar `
+    -Cantidad $c `
+    -Suma $s

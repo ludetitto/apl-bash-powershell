@@ -1,9 +1,23 @@
 #!/usr/bin/env bash
+#-------------------------------------------------------#
+#               Virtualizacion de Hardware              #
+#                                                       #
+#   APL1                                                #
+#   Nro ejercicio: 1                                    #
+#                                                       #
+#   Integrantes:                                        #
+#       Vignardel Francisco                             #
+#       De Titto Lucia                                  #
+#       Gallardo Samuel                                 #
+#       Francisco Vladimir                              #
+#       Medina Ramiro                                   #
+#                                                       #
+#-------------------------------------------------------#
 
 mostrar_ayuda() {
   cat << EOF
 Uso:
-  $0 -a archivo.csv [opciones]
+  $0 -a <archivo.csv> [opciones]
 
 Descripción:
   Script para procesar archivos CSV, permitiendo filtrar registros,
@@ -142,11 +156,13 @@ NR==1 {
   # Validar columnas una sola vez
   if (filtro != "" && !(filtro in headers)) {
     print "Error: campo de filtro no existe"
+	error_flag = 1
     exit 1
   }
 
   if (sumar != "" && !(sumar in headers)) {
     print "Error: campo de suma no existe"
+	error_flag = 1
     exit 1
   }
 
@@ -194,9 +210,7 @@ END {
     if (c == 0) {
       print "Resultados:\nNo se encontraron registros\n"
     } else {
-		if (filtro != "") {
-		  printf "Resultados:\nCantidad de registros = %d\n", c
-		}
+		printf "Resultados:\nCantidad de registros = %d\n", c
     }
   } else {
     if (c == 0) {
