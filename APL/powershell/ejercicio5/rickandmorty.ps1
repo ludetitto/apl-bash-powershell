@@ -45,11 +45,13 @@
 
 param(
     [Parameter(ParameterSetName = 'Consultar')]
+    [ValidateNotNullOrEmpty()]
     [ValidateScript({ $_ -gt 0 })]
     [Alias("i")]
     [int[]]$Id,
     
     [ValidateNotNullOrEmpty()]
+    [Parameter(ParameterSetName = 'Consultar')]
     [Alias("b")]
     [string[]]$Nombre,
     
@@ -62,10 +64,13 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 function Validar-Parametros {
+    if(!$Id -and !$Nombre -and !$Clear) {
+        throw "Error: Debe proporcionar al menos una opción de búsqueda (-Id o -Nombre) o la opción de limpieza (-Clear). Use -Help para más información."
+    }
+
     if($Clear) {
         if(-not (Test-Path "cache")) {
-            Write-Host "No se encontro cache de personajes para limpiar."
-            exit 0
+            throw "No se encontro cache de personajes para limpiar."
         }
         if(Test-Path "cache") {
             Remove-Item "cache" -Recurse -ErrorAction SilentlyContinue

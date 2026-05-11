@@ -20,7 +20,7 @@ NOMBRE=""
 CLEAR=false
 
 # Establecer un trap para eliminar los archivos temporales al salir del script
-trap 'rm -f "/tmp/rickandmorty_$$.txt" "/tmp/rickandmorty_separated_$$.txt"' EXIT
+trap "rm -f \"/tmp/rickandmorty_$$.txt\" \"/tmp/rickandmorty_separated_$$.txt\"" EXIT
 
 # Funcion para mostrar el help con formato similar a man page
 mostrar_ayuda() {
@@ -173,38 +173,38 @@ validar_response() {
   # Si no hay http_code, significa error de conexión
   if [[ -z "$http_code" ]] || [[ "$http_code" == "000" ]]; then
     echo "Error: No se pudo conectar a la API. Verifique su conexion a internet."
-    return 0 # Error
+    return 1
   fi
   
   # Validar HTTP status codes
   if [[ $http_code -eq 404 ]]; then
     echo "Error: No se encontraron personajes que coincidan con la consulta."
-    return 0 # Error
+    return 1
   fi
   
   if [[ $http_code -ge 500 ]]; then
     echo "Error: La API del servidor no está disponible (HTTP $http_code)."
-    return 0 # Error
+    return 1
   fi
   
   if [[ $http_code -ne 200 ]]; then
     echo "Error: La API devolvió un error HTTP $http_code."
-    return 0 # Error
+    return 1
   fi
   
   # Validar respuesta vacía
   if [[ -z "$response" ]]; then
     echo "Error: La API no devolvió respuesta."
-    return 0 # Error
+    return 1
   fi
   
   # Validar si contiene error JSON
   if echo "$response" | grep -q '"error":'; then
     echo "Error: No se encontraron resultados."
-    return 0 # Error
+    return 1
   fi
   
-  return 1
+  return 0
 }
 
 # Funcion para obtener personajes por ID
@@ -230,16 +230,14 @@ obtener_personajes_por_id() {
       HTTP_CODE=$(echo "$RESPONSE" | tail -1)
       RESPONSE=$(echo "$RESPONSE" | head -n -1)
       
-      if validar_response "$RESPONSE" "$HTTP_CODE"; then
+      if ! validar_response "$RESPONSE" "$HTTP_CODE"; then
         return 1
       fi
-
+      
       echo "$RESPONSE" > "/tmp/rickandmorty_$$.txt"
 
-      for id in "${IDS_A_PEDIR[@]}"; do
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] ID:$id" >> api_tracking.log
-      done
     fi
+    return 0
 }
 
 # Funcion para obtener personajes por nombre
@@ -260,23 +258,21 @@ obtener_personajes_por_nombre() {
     done
       
     for NOMBRE_ITEM in "${NOMBRES_A_PEDIR[@]}"; do
-      if [[ -s /tmp/rickandmorty_$$.txt ]]; then
-        echo "," >> '/tmp/rickandmorty_$$.txt'
-      fi
-
       # Capturar respuesta y HTTP code
       RESPONSE=$(curl -w "\n%{HTTP_CODE}" -fsS "https://rickandmortyapi.com/api/character/?name=$NOMBRE_ITEM" 2>/dev/null)
       HTTP_CODE=$(echo "$RESPONSE" | tail -1)
       RESPONSE=$(echo "$RESPONSE" | head -n -1)
 
-      if validar_response "$RESPONSE" "$HTTP_CODE"; then
+      if ! validar_response "$RESPONSE" "$HTTP_CODE"; then
         return 1
       fi
 
-      echo "$RESPONSE" >> "/tmp/rickandmorty_$$.txt"
+      echo "$RESPONSE" > "/tmp/rickandmorty_$$.txt"
       
       echo "[$(date '+%Y-%m-%d %H:%M:%S')] NOMBRE:$NOMBRE_ITEM" >> api_tracking.log
     done
+
+    return 0
 }
 
 # Funcion para parsear un campo especifico de un objeto JSON
@@ -334,6 +330,7 @@ parsear_respuesta() {
       mostrar_personaje "$CID" "$NAME" "$STATUS" "$SPECIES" "$GENDER" "$ORIGIN" "$LOCATION" "$EPISODES"
             
     done < /tmp/rickandmorty_separated_$$.txt
+    rm -f /tmp/rickandmorty_$$.txt /tmp/rickandmorty_separated_$$.txt
   fi
 }
 
@@ -362,11 +359,12 @@ fi
 
 if [[ -n "$ID" ]]; then
   obtener_personajes_por_id
+  parsear_respuesta
+  mostrar_path_archivos
 fi
 
 if [[ -n "$NOMBRE" ]]; then
   obtener_personajes_por_nombre
+  parsear_respuesta
+  mostrar_path_archivos
 fi
-
-parsear_respuesta
-mostrar_path_archivos
