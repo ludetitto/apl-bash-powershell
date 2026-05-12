@@ -5,10 +5,10 @@
 # Materia: Virtualización de Hardware (3654) - UNLaM 2026
 # Integrantes:
 #   - Francisco, Vladimir
-#   - Nombre Apellido
-#   - Nombre Apellido
-#   - Nombre Apellido
-#   - Nombre Apellido
+#   - Vignardel, Francisco
+#   - De Titto, Lucia
+#   - Gallardo, Samuel
+#   - Medina, Ramiro
 # =============================================================================
 
 mostrar_ayuda() {
