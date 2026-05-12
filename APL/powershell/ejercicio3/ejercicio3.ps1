@@ -17,10 +17,10 @@
     Materia: Virtualizacion de Hardware (3654) - UNLaM 2026
     Integrantes:
         - Francisco, Vladimir
-        - Nombre Apellido
-        - Nombre Apellido
-        - Nombre Apellido
-        - Nombre Apellido
+        - Vignardel, Francisco
+        - De Titto, Lucia 
+        - Gallardo, Samuel
+        - Medina, Ramiro
 #>
 param(
     [Parameter(Mandatory=$true, HelpMessage="Ingrese la ruta del directorio a analizar (sin comillas)")]
