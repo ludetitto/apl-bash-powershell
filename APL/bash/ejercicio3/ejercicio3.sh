@@ -70,18 +70,24 @@ while true; do
     esac
 done
 
-# Validaciones
-if [ -z "$directorio" ]; then
-    echo "Error: el parámetro --directorio es obligatorio."
-    echo "Usá $0 --help para ver la ayuda."
+# Primero intentamos resolver la ruta
+directorio_resuelto=$(realpath "$directorio" 2>/dev/null)
+
+# Si realpath falla, la ruta no existe
+if [ -z "$directorio_resuelto" ]; then
+    echo "Error: '$directorio' no es un directorio válido o no existe."
     exit 1
 fi
 
+directorio="$directorio_resuelto"
+
+# Validar que sea un directorio
 if [ ! -d "$directorio" ]; then
     echo "Error: '$directorio' no es un directorio válido o no existe."
     exit 1
 fi
 
+# Validar permisos
 if [ ! -r "$directorio" ]; then
     echo "Error: no tenés permisos de lectura sobre '$directorio'."
     exit 1
@@ -97,17 +103,22 @@ buscar_duplicados() {
             tabla[$clave]="${tabla[$clave]}|$dir"
         fi
     done < <(find "$directorio" -type f -exec stat -c "%s %n" {} \; | awk '{
-        tamanio = $1
-        ruta = $2
-        n = split(ruta, partes, "/")
-        nombre = partes[n]
-        dir = ""
-        for (i = 1; i < n; i++) {
-            dir = dir partes[i]
-            if (i < n-1) dir = dir "/"
-        }
-        print nombre ":" tamanio "|" dir
-    }')
+         tamanio = $1
+    # Reconstruimos la ruta completa ignorando el primer campo (tamaño)
+    ruta = ""
+    for (i = 2; i <= NF; i++) {
+        if (i == 2) ruta = $i
+        else ruta = ruta " " $i
+    }
+    n = split(ruta, partes, "/")
+    nombre = partes[n]
+    dir = ""
+    for (i = 1; i < n; i++) {
+        dir = dir partes[i]
+        if (i < n-1) dir = dir "/"
+    }
+    print nombre ":" tamanio "|" dir
+}')
 
     hay_duplicados=false
 
