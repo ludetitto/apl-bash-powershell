@@ -23,22 +23,17 @@
         - Nombre Apellido
 #>
 param(
+    [Parameter(Mandatory=$true, HelpMessage="Ingrese la ruta del directorio a analizar (sin comillas)")]
+    [ValidateNotNullOrEmpty()]
+    [ValidateScript({
+        if (-not (Test-Path $_ -PathType Container)) {
+            throw "El directorio '$_' no existe o no es valido."
+        }
+        $true
+    })]
     [string]$directorio
 )
 
-# Si no se paso el parametro lo pedimos manualmente
-while ([string]::IsNullOrEmpty($directorio)) {
-    $directorio = (Read-Host "Ingrese la ruta del directorio a analizar (sin comillas)").Trim('"').Trim("'")
-
-}
-
-# Validamos que el directorio exista
-if (-not (Test-Path $directorio -PathType Container)) {
-    Write-Error "El directorio '$directorio' no existe o no es valido."
-    exit 1
-}
-
-# Validamos permisos de lectura
 try {
     Get-ChildItem -Path $directorio -ErrorAction Stop | Out-Null
 } catch {
