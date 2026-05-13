@@ -1,9 +1,47 @@
 #!/usr/bin/env pwsh
+
+#-------------------------------------------------------#
+#               Virtualizacion de Hardware              #
+#                                                       #
+#   APL1                                                #
+#   Nro ejercicio: 2                                    #
+#                                                       #
+#   Integrantes:                                        #
+#       Vignardel Francisco                             #
+#       De Titto Lucia                                  #
+#       Gallardo Samuel                                 #
+#       Francisco Vladimir                              #
+#       Medina Ramiro                                   #
+#                                                       #
+#-------------------------------------------------------#
+
+<#
+.SYNOPSIS
+    Normaliza el contenido de un archivo de texto.
+
+.DESCRIPTION
+    Corrige espacios duplicados, aplica mayúsculas al inicio de oraciones y párrafos,
+    balancea signos de puntuación españoles (agrega '¿' y '¡' faltantes) y ajusta
+    el espaciado correcto después de puntos, comas y signos de exclamación/interrogación.
+
+.PARAMETER archivo
+    Ruta del archivo de texto a procesar (obligatorio).
+
+.PARAMETER salida
+    Ruta del archivo donde se guardará el resultado (opcional).
+    Si no se informa, el resultado se muestra por pantalla.
+
+.EXAMPLE
+    .\ejercicio2.ps1 -archivo archivo.txt
+    Procesa el archivo y muestra el resultado por pantalla.
+
+.EXAMPLE
+    .\ejercicio2.ps1 -archivo archivo.txt -salida texto_corregido.txt
+    Procesa el archivo y guarda el resultado en texto_corregido.txt.
+#>
+
 [CmdletBinding(PositionalBinding=$false)]
 param (
-    [Alias('h')]
-    [switch]$help,
-
     [Alias('a')]
     [string]$archivo,
 
@@ -11,36 +49,9 @@ param (
     [string]$salida
 )
 
-function Mostrar-Ayuda {
-    $nombreScript = $MyInvocation.MyCommand.Name
-    Write-Host "Uso: .\$nombreScript -a <archivo_entrada> [-s <archivo_salida>]"
-    Write-Host ""
-    Write-Host "Descripción:"
-    Write-Host "  Normaliza un archivo de texto corrigiendo espacios duplicados,"
-    Write-Host "  mayúsculas al inicio de oraciones, y balanceando signos de"
-    Write-Host "  puntuación (abre signos de interrogación '¿' y exclamación '¡' faltantes)."
-    Write-Host "  También ajusta el espaciado correcto después de puntos y comas."
-    Write-Host ""
-    Write-Host "Parámetros:"
-    Write-Host "  -a, -archivo   Ruta del archivo de texto a procesar (obligatorio)."
-    Write-Host "  -s, -salida    Ruta del archivo donde se guardará el resultado (opcional)."
-    Write-Host "                 Si no se informa, el resultado se muestra por pantalla."
-    Write-Host "  -h, -help      Muestra este menú de ayuda."
-    Write-Host ""
-    Write-Host "Ejemplos:"
-    Write-Host "  .\$nombreScript -a archivo.txt"
-    Write-Host "  .\$nombreScript -archivo archivo.txt -salida texto_corregido.txt"
-}
-
-#Si pasaron el parámetro help, muestra la ayuda y sale
-if ($help) {
-    Mostrar-Ayuda
-    exit 0
-}
-
 if (-not $archivo) {
     Write-Host "Error: Falta el parámetro obligatorio '-archivo'." -ForegroundColor Red
-    Write-Host "Usa '.\$($MyInvocation.MyCommand.Name) -help' para ver las opciones."
+    Write-Host "Usa 'Get-Help .\$($MyInvocation.MyCommand.Name)' para ver las opciones."
     exit 1
 }
 
