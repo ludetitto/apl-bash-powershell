@@ -1,4 +1,23 @@
 #!/bin/sh
+mostrar_ayuda() {
+    echo "Uso: $0 -a <archivo_entrada> [-s <archivo_salida>]"
+    echo ""
+    echo "Descripción:"
+    echo "  Normaliza un archivo de texto corrigiendo espacios duplicados,"
+    echo "  mayúsculas al inicio de oraciones, y balanceando signos de"
+    echo "  puntuación (abre signos de interrogación '¿' y exclamación '¡' faltantes)."
+    echo "  También ajusta el espaciado correcto después de puntos y comas."
+    echo ""
+    echo "Parámetros:"
+    echo "  -a, --archivo   Ruta del archivo de texto a procesar (obligatorio)."
+    echo "  -s, --salida    Ruta del archivo donde se guardará el resultado (opcional)."
+    echo "                  Si no se informa, el resultado se muestra por pantalla."
+    echo "  -h, --help      Muestra este menú de ayuda."
+    echo ""
+    echo "Ejemplos:"
+    echo "  $0 -a archivo.txt"
+    echo "  $0 --archivo archivo.txt --salida texto_corregido.txt"
+}
 
 normalizar(){
 	archivo="$1"
@@ -75,8 +94,17 @@ normalizar(){
 ARCHIVO=""
 SALIDA=""
 
+if [ "$#" -eq 0 ]; then
+    mostrar_ayuda
+    exit 1
+fi
+
 while [ "$#" -gt 0 ]; do
     case "$1" in
+        -h|--help)
+            mostrar_ayuda
+            exit 0
+            ;;
         -a|--archivo)
             ARCHIVO="$2"
             shift 2
@@ -86,7 +114,8 @@ while [ "$#" -gt 0 ]; do
             shift 2
             ;;
         *)
-            echo "Uso: $0 -a <archivo_entrada> [-s <archivo_salida>]"
+            echo "Error: Parámetro no reconocido '$1'"
+            echo "Usa '$0 --help' para ver las opciones disponibles."
             exit 1
             ;;
     esac
