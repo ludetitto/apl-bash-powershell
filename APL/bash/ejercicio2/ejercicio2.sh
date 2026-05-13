@@ -14,6 +14,28 @@
 #       Medina Ramiro                                   #
 #                                                       #
 #-------------------------------------------------------#
+
+mostrar_ayuda() {
+    echo "Uso: $0 -a <archivo_entrada> [-s <archivo_salida>]"
+    echo ""
+    echo "Descripción:"
+    echo "  Normaliza un archivo de texto corrigiendo espacios duplicados,"
+    echo "  mayúsculas al inicio de oraciones, y balanceando signos de"
+    echo "  puntuación (abre signos de interrogación '¿' y exclamación '¡' faltantes)."
+    echo "  También ajusta el espaciado correcto después de puntos y comas."
+    echo ""
+    echo "Parámetros:"
+    echo "  -a, --archivo   Ruta del archivo de texto a procesar (obligatorio)."
+    echo "  -s, --salida    Ruta del archivo donde se guardará el resultado (opcional)."
+    echo "                  Si no se informa, el resultado se muestra por pantalla."
+    echo "  -h, --help      Muestra este menú de ayuda."
+    echo ""
+    echo "Ejemplos:"
+    echo "  $0 -a archivo.txt"
+    echo "  $0 --archivo archivo.txt --salida texto_corregido.txt"
+}
+
+
 normalizar(){
 	archivo="$1"
 	sed -E '
