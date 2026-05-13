@@ -1,3 +1,5 @@
+#!/usr/bin/env pwsh
+
 #-------------------------------------------------------#
 #               Virtualizacion de Hardware              #
 #                                                       #

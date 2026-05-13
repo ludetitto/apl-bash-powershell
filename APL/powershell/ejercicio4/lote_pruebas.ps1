@@ -1,13 +1,19 @@
-# =============================================================================
-# Lote de prueba - Ejercicio 4
-# Materia: Virtualización de Hardware (3654) - UNLaM 2026
-# Integrantes:
-#   - Vignardel Francisco
-#   - De Titto Lucia
-#   - Gallardo Samuel
-#   - Francisco Vladimir
-#   - Medina Ramiro
-# =============================================================================
+#!/usr/bin/env pwsh
+
+#-------------------------------------------------------#
+#               Virtualizacion de Hardware              #
+#                                                       #
+#   APL1                                                #
+#   Nro ejercicio: 4                                    #
+#                                                       #
+#   Integrantes:                                        #
+#       Vignardel Francisco                             #
+#       De Titto Lucia                                  #
+#       Gallardo Samuel                                 #
+#       Francisco Vladimir                              #
+#       Medina Ramiro                                   #
+#                                                       #
+#-------------------------------------------------------#
 
 $SCRIPT = ".\demonio.ps1"
 $T = "/tmp"

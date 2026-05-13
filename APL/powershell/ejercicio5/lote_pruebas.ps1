@@ -1,13 +1,19 @@
-# =============================================================================
-# Lote de prueba - Ejercicio 5
-# Materia: Virtualización de Hardware (3654) - UNLaM 2026
-# Integrantes:
-#   - Vignardel Francisco
-#   - De Titto Lucia
-#   - Gallardo Samuel
-#   - Francisco Vladimir
-#   - Medina Ramiro
-# =============================================================================
+#!/usr/bin/env pwsh
+
+#-------------------------------------------------------#
+#               Virtualizacion de Hardware              #
+#                                                       #
+#   APL1                                                #
+#   Nro ejercicio: 5                                    #
+#                                                       #
+#   Integrantes:                                        #
+#       Vignardel Francisco                             #
+#       De Titto Lucia                                  #
+#       Gallardo Samuel                                 #
+#       Francisco Vladimir                              #
+#       Medina Ramiro                                   #
+#                                                       #
+#-------------------------------------------------------#
 
 $SCRIPT = ".\rickandmorty.ps1"
 

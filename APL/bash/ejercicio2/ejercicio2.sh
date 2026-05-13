@@ -1,4 +1,20 @@
-#!/bin/sh
+#!/usr/bin/env bash
+
+#-------------------------------------------------------#
+#               Virtualizacion de Hardware              #
+#                                                       #
+#   APL1                                                #
+#   Nro ejercicio: 2                                    #
+#                                                       #
+#   Integrantes:                                        #
+#       Vignardel Francisco                             #
+#       De Titto Lucia                                  #
+#       Gallardo Samuel                                 #
+#       Francisco Vladimir                              #
+#       Medina Ramiro                                   #
+#                                                       #
+#-------------------------------------------------------#
+
 mostrar_ayuda() {
     echo "Uso: $0 -a <archivo_entrada> [-s <archivo_salida>]"
     echo ""
@@ -18,6 +34,7 @@ mostrar_ayuda() {
     echo "  $0 -a archivo.txt"
     echo "  $0 --archivo archivo.txt --salida texto_corregido.txt"
 }
+
 
 normalizar(){
 	archivo="$1"

@@ -1,3 +1,20 @@
+#!/usr/bin/env pwsh
+
+#-------------------------------------------------------#
+#               Virtualizacion de Hardware              #
+#                                                       #
+#   APL1                                                #
+#   Nro ejercicio: 3                                    #
+#                                                       #
+#   Integrantes:                                        #
+#       Vignardel Francisco                             #
+#       De Titto Lucia                                  #
+#       Gallardo Samuel                                 #
+#       Francisco Vladimir                              #
+#       Medina Ramiro                                   #
+#                                                       #
+#-------------------------------------------------------#
+
 <#
 .SYNOPSIS
     Detecta archivos duplicados en un directorio y sus subdirectorios.
@@ -13,14 +30,6 @@
 .EXAMPLE
     .\ejercicio3.ps1 -directorio "C:\Users\Usuario\Documentos"
 
-.NOTES
-    Materia: Virtualizacion de Hardware (3654) - UNLaM 2026
-    Integrantes:
-        - Francisco, Vladimir
-        - Nombre Apellido
-        - Nombre Apellido
-        - Nombre Apellido
-        - Nombre Apellido
 #>
 param(
     [string]$directorio
