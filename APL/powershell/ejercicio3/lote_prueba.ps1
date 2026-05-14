@@ -37,6 +37,8 @@ try {
     New-Item -ItemType Directory -Path "$dirPrueba\sub1" -Force | Out-Null
     New-Item -ItemType Directory -Path "$dirPrueba\sub2" -Force | Out-Null
     New-Item -ItemType Directory -Path "$dirPrueba\sub2\sub3" -Force | Out-Null
+    New-Item -ItemType Directory -Path "$dirPrueba\con espacio" -Force | Out-Null
+    New-Item -ItemType Directory -Path "$dirPrueba\con espacio\espacio dos" -Force | Out-Null
 
     # Caso 1: duplicado real (mismo nombre y mismo tamanio)
     "hola" | Out-File "$dirPrueba\sub1\test.txt" -Encoding utf8 -NoNewline
@@ -49,6 +51,10 @@ try {
 
     # Caso 3: archivo unico
     "soy unico" | Out-File "$dirPrueba\sub1\unico.txt" -Encoding utf8 -NoNewline
+
+    # Caso 4: duplicados en directorio con espacios
+    "hola" | Out-File "$dirPrueba\con espacio\test.txt" -Encoding utf8 -NoNewline
+    "hola" | Out-File "$dirPrueba\con espacio\espacio dos\test.txt" -Encoding utf8 -NoNewline
 
     Write-Host "Estructura creada en: $dirPrueba" -ForegroundColor Green
     Write-Host ""
@@ -71,7 +77,10 @@ try {
     Write-Host "CASO 5 - Sin parametros (debe pedir el directorio):"
     Write-Host "  & $script" -ForegroundColor White
     Write-Host ""
-    Write-Host "CASO 6 - Ayuda:"
+     Write-Host "CASO 6 - Directorio con espacios (Ingresar entre comillas [""]):"
+    Write-Host "  & $script -directorio '$dirPrueba\con espacio'" -ForegroundColor White
+    Write-Host ""
+    Write-Host "CASO 7 - Ayuda:"
     Write-Host "  Get-Help $script -Full" -ForegroundColor White
     Write-Host ""
     Write-Host "========================================" -ForegroundColor Cyan
