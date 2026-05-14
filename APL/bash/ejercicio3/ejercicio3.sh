@@ -1,15 +1,19 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# =============================================================================
-# Ejercicio 3 - Detección de archivos duplicados
-# Materia: Virtualización de Hardware (3654) - UNLaM 2026
-# Integrantes:
-#   - Francisco, Vladimir
-#   - Vignardel, Francisco
-#   - De Titto, Lucia
-#   - Gallardo, Samuel
-#   - Medina, Ramiro
-# =============================================================================
+#-------------------------------------------------------#
+#               Virtualizacion de Hardware              #
+#                                                       #
+#   APL1                                                #
+#   Nro ejercicio: 3                                   #
+#                                                       #
+#   Integrantes:                                        #
+#       Vignardel Francisco                             #
+#       De Titto Lucia                                  #
+#       Gallardo Samuel                                 #
+#       Francisco Vladimir                              #
+#       Medina Ramiro                                   #
+#                                                       #
+#-------------------------------------------------------#
 
 mostrar_ayuda() {
     echo "Uso: $0 -d <directorio> [opciones]"
@@ -144,4 +148,3 @@ buscar_duplicados() {
 }
 
 buscar_duplicados
-

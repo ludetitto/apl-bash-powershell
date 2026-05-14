@@ -1,3 +1,20 @@
+#!/usr/bin/env pwsh
+
+#-------------------------------------------------------#
+#               Virtualizacion de Hardware              #
+#                                                       #
+#   APL1                                                #
+#   Nro ejercicio: 3                                    #
+#                                                       #
+#   Integrantes:                                        #
+#       Vignardel Francisco                             #
+#       De Titto Lucia                                  #
+#       Gallardo Samuel                                 #
+#       Francisco Vladimir                              #
+#       Medina Ramiro                                   #
+#                                                       #
+#-------------------------------------------------------#
+
 <#
 .SYNOPSIS
     Lote de prueba para el ejercicio 3 - Deteccion de archivos duplicados.
@@ -6,12 +23,6 @@
     Crea una estructura de directorios y archivos temporales para probar
     el ejercicio 3. Una vez creada la estructura, el usuario puede probar
     los casos manualmente. Al presionar Enter, limpia todo.
-
-.NOTES
-    Materia: Virtualizacion de Hardware (3654) - UNLaM 2026
-    Integrantes:
-        - Nombre Apellido
-        - Nombre Apellido
 #>
 
 $script = ".\ejercicio3.ps1"

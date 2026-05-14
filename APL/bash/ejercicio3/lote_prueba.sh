@@ -1,15 +1,20 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# =============================================================================
-# Lote de prueba - Ejercicio 3
-# Materia: Virtualización de Hardware (3654) - UNLaM 2026
-# Integrantes:
-#   - Francisco, Vladimir
-#   - Nombre Apellido
-#   - Nombre Apellido
-#   - Nombre Apellido
-#   - Nombre Apellido
-# =============================================================================
+
+#-------------------------------------------------------#
+#               Virtualizacion de Hardware              #
+#                                                       #
+#   APL1                                                #
+#   Nro ejercicio: 3                                    #
+#                                                       #
+#   Integrantes:                                        #
+#       Vignardel Francisco                             #
+#       De Titto Lucia                                  #
+#       Gallardo Samuel                                 #
+#       Francisco Vladimir                              #
+#       Medina Ramiro                                   #
+#                                                       #
+#-------------------------------------------------------#
 
 DIR_PRUEBA="/tmp/prueba_ej3"
 
