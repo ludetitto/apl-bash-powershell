@@ -24,24 +24,30 @@
     Luego, dependiendo de la opción elegida, puede contar la cantidad de registros que cumplen el filtro o sumar los valores de un campo numérico para esos registros.
     El filtro es de tipo "contiene" y no distingue mayúsculas de minúsculas.
 	
-	Sintaxis:
-        ./procesarCSV.ps1 -a <archivo.csv> [-f <campo>] [-b <valor>] (-c | -s <campo>)
+.PARAMETER -a, --archivo
+    Especifica el archivo CSV de entrada. Este parámetro es obligatorio.
 
-    Parámetros:
-        -a, --archivo   Archivo CSV de entrada
-        -f, --filtro    Campo para filtrar
-        -b, --buscar    Valor a buscar
-        -c, --contar    Cuenta registros
-        -s, --sumar     Suma un campo numérico
-	
-	Ejemplos:
-    
+.PARAMETER -f, --filtro
+    Especifica el campo sobre el cual se aplicará el filtro. Este parámetro es opcional, pero si se usa, debe ir acompañado de -b.
+
+.PARAMETER -b, --buscar
+    Especifica el valor a buscar en el campo indicado por -f. Este parámetro es opcional, pero si se usa, debe ir acompañado de -f.
+
+.PARAMETER -c, --contar
+    Indica que se desea contar la cantidad de registros que cumplen el filtro. No se puede usar junto con -s.
+
+.PARAMETER -s, --sumar
+    Indica que se desea sumar los valores de un campo numérico para los registros que cumplen el filtro. Requiere especificar el campo a sumar. No se puede usar junto con -c.
+
+.EXAMPLE
 		./procesarCSV.ps1 -a censo.csv -c
 		Cuenta la cantidad total de registros en el archivo censo.csv.
 
+.EXAMPLE
 		./procesarCSV.ps1 -a censo.csv -f Ciudad -b "San" -c
 		Cuenta la cantidad de registros donde el campo Ciudad contiene "San".
 
+.EXAMPLE
 		./procesarCSV.ps1 -a clientes.csv -f Apellido -b "Perez" -s Saldo
 		Suma el campo Saldo para los registros donde el campo Apellido contiene "Perez".
 	
@@ -56,6 +62,24 @@ $filtro = ""
 $buscar = ""
 $sumar = ""
 $contar = $false
+
+[CmdletBinding(PositionalBinding=$false)]
+param (
+    [Alias('a')]
+    [string]$archivo,
+
+    [Alias('f')]
+    [string]$filtro,
+
+    [Alias('b')]
+    [string]$buscar,
+
+    [Alias('s')]
+    [string]$sumar,
+
+    [Alias('c')]
+    [switch]$contar
+)
 
 # =========================
 # Funciones
