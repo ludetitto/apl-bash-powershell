@@ -49,12 +49,6 @@
 param(
     [Parameter(Mandatory = $true, ParameterSetName = 'Iniciar')]
     [Parameter(Mandatory = $true, ParameterSetName = 'Matar')]
-    [ValidateScript({
-        if (-not (Test-Path $_ -PathType Container)) {
-            throw "El directorio '$_' no existe."
-        }
-        $true
-    })]
     [string]$Directorio,
 
     [Parameter(Mandatory = $true, ParameterSetName = 'Iniciar')]
@@ -318,8 +312,12 @@ function detener_daemon {
     }
 }
 
-# Convertir rutas a absolutas (param ya validó que el directorio existe)
+# Convertir rutas a absolutas y validar que el directorio exista
 $Directorio = ruta_absoluta $Directorio
+if (-not (Test-Path $Directorio -PathType Container)) {
+    registrar_error "El directorio '$Directorio' no existe."
+    exit 1
+}
 
 # Modo kill: detener el daemon
 if ($Kill) {

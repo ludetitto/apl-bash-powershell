@@ -1,0 +1,3 @@
+[2026-06-12 12:43:20] Demonio iniciado | Directorio: '/home/cisco/apl-bash-powershell/APL/powershell/ejercicio4/dir/' | Palabras: fork, sem_open
+[2026-06-12 12:43:20] Procesando archivos existentes en '/home/cisco/apl-bash-powershell/APL/powershell/ejercicio4/dir/' ...
+[2026-06-12 12:43:20] 0 archivos existentes procesados.
