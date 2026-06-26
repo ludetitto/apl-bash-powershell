@@ -83,7 +83,7 @@ function marca_tiempo    { (Get-Date).ToString('yyyy-MM-dd HH:mm:ss') }
 function ruta_absoluta {
     param([string]$ruta)
     if ([string]::IsNullOrWhiteSpace($ruta)) { return '' }
-    return [IO.Path]::GetFullPath($ruta)
+    return [IO.Path]::GetFullPath($ruta, (Get-Location).Path)
 }
 
 # Genera la ruta única del archivo PID para este directorio (hash evita colisiones entre directorios)
