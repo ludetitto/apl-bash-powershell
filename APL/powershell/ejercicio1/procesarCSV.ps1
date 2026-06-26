@@ -23,57 +23,36 @@
     Este script permite analizar un archivo CSV aplicando un filtro de texto sobre un campo específico. 
     Luego, dependiendo de la opción elegida, puede contar la cantidad de registros que cumplen el filtro o sumar los valores de un campo numérico para esos registros.
     El filtro es de tipo "contiene" y no distingue mayúsculas de minúsculas.
+	
+.PARAMETER -a, --archivo
+    Especifica el archivo CSV de entrada. Este parámetro es obligatorio.
 
-.PARAMETER archivo
-    Archivo CSV de entrada. Soporta el alias -a.
+.PARAMETER -f, --filtro
+    Especifica el campo sobre el cual se aplicará el filtro. Este parámetro es opcional, pero si se usa, debe ir acompañado de -b.
 
-.PARAMETER filtro
-    Campo de la columna para filtrar. Soporta el alias -f.
+.PARAMETER -b, --buscar
+    Especifica el valor a buscar en el campo indicado por -f. Este parámetro es opcional, pero si se usa, debe ir acompañado de -f.
 
-.PARAMETER buscar
-    Valor a buscar dentro del campo especificado. Soporta el alias -b.
+.PARAMETER -c, --contar
+    Indica que se desea contar la cantidad de registros que cumplen el filtro. No se puede usar junto con -s.
 
-.PARAMETER sumar
-    Suma un campo numérico de los resultados obtenidos. Soporta el alias -s.
-
-.PARAMETER contar
-    Cuenta la cantidad de registros. Es un parámetro de tipo switch. Soporta el alias -c.
-
-.EXAMPLE
-    ./procesarCSV.ps1 -a censo.csv -c
-    Cuenta la cantidad total de registros en el archivo censo.csv.
+.PARAMETER -s, --sumar
+    Indica que se desea sumar los valores de un campo numérico para los registros que cumplen el filtro. Requiere especificar el campo a sumar. No se puede usar junto con -c.
 
 .EXAMPLE
-    ./procesarCSV.ps1 -a censo.csv -f Ciudad -b "San" -c
-    Cuenta la cantidad de registros donde el campo Ciudad contiene "San".
+		./procesarCSV.ps1 -a censo.csv -c
+		Cuenta la cantidad total de registros en el archivo censo.csv.
 
 .EXAMPLE
-    ./procesarCSV.ps1 -archivo clientes.csv -filtro Apellido -buscar "Perez" -sumar Saldo
-    Suma el campo Saldo para los registros donde el campo Apellido contiene "Perez" (usando el nombre completo del parámetro).
+		./procesarCSV.ps1 -a censo.csv -f Ciudad -b "San" -c
+		Cuenta la cantidad de registros donde el campo Ciudad contiene "San".
+
+.EXAMPLE
+		./procesarCSV.ps1 -a clientes.csv -f Apellido -b "Perez" -s Saldo
+		Suma el campo Saldo para los registros donde el campo Apellido contiene "Perez".
+	
 #>
 
-<<<<<<< Updated upstream
-[CmdletBinding()]
-param (
-    [Parameter(Mandatory=$false)]
-    [Alias("a")]
-    [string]$Archivo,
-
-    [Parameter(Mandatory=$false)]
-    [Alias("f")]
-    [string]$Filtro,
-
-    [Parameter(Mandatory=$false)]
-    [Alias("b")]
-    [string]$Buscar,
-
-    [Parameter(Mandatory=$false)]
-    [Alias("s")]
-    [string]$Sumar,
-
-    [Parameter(Mandatory=$false)]
-    [Alias("c")]
-=======
 [CmdletBinding(PositionalBinding=$false)]
 param (
     [Parameter(Mandatory=$true)]
@@ -90,7 +69,6 @@ param (
     [string]$Sumar = "",
 
     [Alias('c')]
->>>>>>> Stashed changes
     [switch]$Contar
 )
 
@@ -152,19 +130,13 @@ function Mostrar-Resultados {
     Write-Host ""
 }
 
-<<<<<<< Updated upstream
-Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
-
-=======
->>>>>>> Stashed changes
 # =========================
 # Validaciones generales
 # =========================
 
-# Se mantiene la lógica de errores customizada para no alterar los mensajes que el usuario recibe
-if (-not $Archivo) {
+if (-not $archivo) {
     Mostrar-Error "Error: debe indicar archivo con -a"
+    exit 1
 }
 
 if (-not (Test-Path $Archivo -PathType Leaf)) {
@@ -175,20 +147,24 @@ if ([System.IO.Path]::GetExtension($Archivo).ToLower() -ne ".csv") {
     Mostrar-Error "Error: el archivo debe tener extensión .csv"
 }
 
-if ($Contar -and $Sumar) {
+if ($contar -and $sumar) {
     Mostrar-Error "Error: no se puede usar -c y -s juntos"
+    exit 1
 }
 
-if (-not $Contar -and -not $Sumar) {
+if (-not $contar -and -not $sumar) {
     Mostrar-Error "Error: debe usar -c o -s"
+    exit 1
 }
 
-if ($Filtro -and -not $Buscar) {
+if ($filtro -and -not $buscar) {
     Mostrar-Error "Error: si usa -f debe usar -b"
+    exit 1
 }
 
-if ($Buscar -and -not $Filtro) {
+if ($buscar -and -not $filtro) {
     Mostrar-Error "Error: -b requiere -f"
+    exit 1
 }
 
 # =========================
@@ -200,16 +176,19 @@ try {
 }
 catch {
     Mostrar-Error "Error: no se pudo leer el archivo '$Archivo'. Asegúrese de que el archivo existe y es un CSV válido."
+    exit 1
 }
 
 $headers = $data[0].PSObject.Properties.Name | ForEach-Object { $_.ToLower() }
 
-if ($Filtro -and ($headers -notcontains $Filtro.ToLower())) {
+if ($filtro -and ($headers -notcontains $filtro.ToLower())) {
     Mostrar-Error "Error: campo de filtro no existe"
+    exit 1
 }
 
-if ($Sumar -and ($headers -notcontains $Sumar.ToLower())) {
+if ($sumar -and ($headers -notcontains $sumar.ToLower())) {
     Mostrar-Error "Error: campo de suma no existe"
+    exit 1
 }
 
 # =========================
@@ -222,30 +201,21 @@ $error_flag = $false
 
 foreach ($row in $data) {
 
-<<<<<<< Updated upstream
-    if ($Filtro) {
-        $valorCampo = $row.$Filtro
-        if (-not ($valorCampo.ToLower() -match $Buscar.ToLower())) {
-            continue
-        }
-    }
-=======
     if ($filtro) {
 		$valorCampo = $row.$filtro
 		if (-not ($valorCampo -eq $buscar)) {
 			continue
 		}
 }
->>>>>>> Stashed changes
 
-    if ($Contar) {
+    if ($contar) {
         $c++
     }
     else {
-        $valor = $row.$Sumar
+        $valor = $row.$sumar
 
         if (-not ($valor -match '^-?[0-9]+(\.[0-9]+)?$')) {
-            Mostrar-Error "Error: el campo '$Sumar' contiene valores no numéricos."
+            Mostrar-Error "Error: el campo '$sumar' contiene valores no numéricos."
             $error_flag = $true
             break
         }
@@ -264,8 +234,8 @@ if ($error_flag) {
 # =========================
 
 Mostrar-Resultados `
-    -Filtro $Filtro `
-    -Buscar $Buscar `
-    -Contar $Contar `
+    -Filtro $filtro `
+    -Buscar $buscar `
+    -Contar $contar `
     -Cantidad $c `
     -Suma $s
