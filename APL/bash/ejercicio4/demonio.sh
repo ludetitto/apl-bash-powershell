@@ -252,9 +252,11 @@ if (( KILL_MODE )); then
     registrar_aviso "No hay demonio corriendo para '$DIRECTORIO'."
     exit 1
   fi
+  pkill -TERM -P "$pid" 2>/dev/null || true  # mata hijos (inotifywait) antes que el padre
   kill -TERM "$pid" 2>/dev/null || true
   sleep 1
   kill -0 "$pid" 2>/dev/null && kill -KILL "$pid" 2>/dev/null || true
+  pkill -KILL -P "$pid" 2>/dev/null || true  # fuerza kill de hijos que sobrevivieron
   rm -f "$(ruta_archivo_pid)" "$(ruta_archivo_estado)"
   registrar_info "Demonio detenido (PID: $pid)."
   exit 0

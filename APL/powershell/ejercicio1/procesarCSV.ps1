@@ -72,6 +72,24 @@ param (
     [switch]$Contar
 )
 
+[CmdletBinding(PositionalBinding=$false)]
+param (
+    [Alias('a')]
+    [string]$archivo,
+
+    [Alias('f')]
+    [string]$filtro,
+
+    [Alias('b')]
+    [string]$buscar,
+
+    [Alias('s')]
+    [string]$sumar,
+
+    [Alias('c')]
+    [switch]$contar
+)
+
 # =========================
 # Funciones
 # =========================
