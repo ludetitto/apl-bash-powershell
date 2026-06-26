@@ -52,6 +52,7 @@
     Suma el campo Saldo para los registros donde el campo Apellido contiene "Perez" (usando el nombre completo del parámetro).
 #>
 
+<<<<<<< Updated upstream
 [CmdletBinding()]
 param (
     [Parameter(Mandatory=$false)]
@@ -72,6 +73,24 @@ param (
 
     [Parameter(Mandatory=$false)]
     [Alias("c")]
+=======
+[CmdletBinding(PositionalBinding=$false)]
+param (
+    [Parameter(Mandatory=$true)]
+    [Alias('a')]
+    [string]$Archivo,
+
+    [Alias('f')]
+    [string]$Filtro = "",
+
+    [Alias('b')]
+    [string]$Buscar = "",
+
+    [Alias('s')]
+    [string]$Sumar = "",
+
+    [Alias('c')]
+>>>>>>> Stashed changes
     [switch]$Contar
 )
 
@@ -133,9 +152,12 @@ function Mostrar-Resultados {
     Write-Host ""
 }
 
+<<<<<<< Updated upstream
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+=======
+>>>>>>> Stashed changes
 # =========================
 # Validaciones generales
 # =========================
@@ -200,12 +222,21 @@ $error_flag = $false
 
 foreach ($row in $data) {
 
+<<<<<<< Updated upstream
     if ($Filtro) {
         $valorCampo = $row.$Filtro
         if (-not ($valorCampo.ToLower() -match $Buscar.ToLower())) {
             continue
         }
     }
+=======
+    if ($filtro) {
+		$valorCampo = $row.$filtro
+		if (-not ($valorCampo -eq $buscar)) {
+			continue
+		}
+}
+>>>>>>> Stashed changes
 
     if ($Contar) {
         $c++
