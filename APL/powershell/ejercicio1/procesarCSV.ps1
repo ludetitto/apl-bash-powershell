@@ -53,32 +53,23 @@
 	
 #>
 
-# =========================
-# Variables
-# =========================
-
-$archivo = ""
-$filtro = ""
-$buscar = ""
-$sumar = ""
-$contar = $false
-
 [CmdletBinding(PositionalBinding=$false)]
 param (
+    [Parameter(Mandatory=$true)]
     [Alias('a')]
-    [string]$archivo,
+    [string]$Archivo,
 
     [Alias('f')]
-    [string]$filtro,
+    [string]$Filtro = "",
 
     [Alias('b')]
-    [string]$buscar,
+    [string]$Buscar = "",
 
     [Alias('s')]
-    [string]$sumar,
+    [string]$Sumar = "",
 
     [Alias('c')]
-    [switch]$contar
+    [switch]$Contar
 )
 
 # =========================
@@ -140,125 +131,6 @@ function Mostrar-Resultados {
 }
 
 # =========================
-# Parseo de parámetros
-# =========================
-
-$i = 0
-
-while ($i -lt $args.Count) {
-
-    switch ($args[$i]) {
-
-        # -------------------------
-        # ARCHIVO
-        # -------------------------
-
-        { $_ -in @("-a","--archivo") } {
-
-            if ($archivo) {
-                Mostrar-Error "Error: -a ya fue especificado"
-                exit 1
-            }
-
-            if ($i + 1 -ge $args.Count -or $args[$i + 1] -match "^-") {
-                Mostrar-Error "Error: -a requiere un archivo"
-                exit 1
-            }
-
-            $archivo = $args[$i + 1]
-            $i += 2
-        }
-
-        # -------------------------
-        # FILTRO
-        # -------------------------
-
-        { $_ -in @("-f","--filtro") } {
-
-            if ($filtro) {
-                Mostrar-Error "Error: -f ya fue especificado"
-                exit 1
-            }
-
-            if ($i + 1 -ge $args.Count -or $args[$i + 1] -match "^-") {
-                Mostrar-Error "Error: si usa -f debe especificar la columna"
-                exit 1
-            }
-
-            $filtro = $args[$i + 1]
-            $i += 2
-        }
-
-        # -------------------------
-        # BUSCAR
-        # -------------------------
-
-        { $_ -in @("-b","--buscar") } {
-
-            if ($buscar) {
-                Mostrar-Error "Error: -b ya fue especificado"
-                exit 1
-            }
-
-            if ($i + 1 -ge $args.Count -or $args[$i + 1] -match "^-") {
-                Mostrar-Error "Error: si usa -b debe especificar qué desea buscar"
-                exit 1
-            }
-
-            $buscar = $args[$i + 1]
-            $i += 2
-        }
-
-        # -------------------------
-        # SUMAR
-        # -------------------------
-
-        { $_ -in @("-s","--sumar") } {
-
-            if ($sumar) {
-				Mostrar-Error "Error: -s ya fue especificado"
-                exit 1
-            }
-
-            if ($i + 1 -ge $args.Count -or $args[$i + 1] -match "^-") {
-                Mostrar-Error "Error: si usa -s debe especificar sobre qué campo sumar"
-                exit 1
-            }
-
-            $sumar = $args[$i + 1]
-            $i += 2
-        }
-
-        # -------------------------
-        # CONTAR
-        # -------------------------
-
-        { $_ -in @("-c","--contar") } {
-
-            if ($contar) {
-                Mostrar-Error "Error: -c ya fue especificado"
-                exit 1
-            }
-
-            $contar = $true
-            $i++
-        }
-
-        # -------------------------
-        # PARÁMETRO DESCONOCIDO
-        # -------------------------
-
-        default {
-            Mostrar-Error "Error: parámetro desconocido -> $($args[$i])"
-            exit 1
-        }
-    }
-}
-
-Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
-
-# =========================
 # Validaciones generales
 # =========================
 
@@ -267,14 +139,12 @@ if (-not $archivo) {
     exit 1
 }
 
-if (-not (Test-Path $archivo -PathType Leaf)) {
-    Mostrar-Error "Error: el archivo no existe" -ForegroundColor Red
-    exit 1
+if (-not (Test-Path $Archivo -PathType Leaf)) {
+    Mostrar-Error "Error: el archivo no existe"
 }
 
-if ([System.IO.Path]::GetExtension($archivo).ToLower() -ne ".csv") {
+if ([System.IO.Path]::GetExtension($Archivo).ToLower() -ne ".csv") {
     Mostrar-Error "Error: el archivo debe tener extensión .csv"
-    exit 1
 }
 
 if ($contar -and $sumar) {
@@ -332,11 +202,11 @@ $error_flag = $false
 foreach ($row in $data) {
 
     if ($filtro) {
-        $valorCampo = $row.$filtro
-        if (-not ($valorCampo.ToLower() -match $buscar.ToLower())) {
-            continue
-        }
-    }
+		$valorCampo = $row.$filtro
+		if (-not ($valorCampo -eq $buscar)) {
+			continue
+		}
+}
 
     if ($contar) {
         $c++
