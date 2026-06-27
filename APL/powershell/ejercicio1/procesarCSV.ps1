@@ -203,7 +203,6 @@ foreach ($row in $data) {
 
     if ($filtro) {
         $valorCampo = $row.$filtro
-        # AQUÍ ESTÁ EL CAMBIO: Se usa -notlike "*$buscar*" en lugar de -not (... -eq ...)
         if ($valorCampo -notlike "*$buscar*") {
             continue
         }
