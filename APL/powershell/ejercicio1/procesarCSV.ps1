@@ -23,7 +23,7 @@
     Este script permite analizar un archivo CSV aplicando un filtro de texto sobre un campo específico. 
     Luego, dependiendo de la opción elegida, puede contar la cantidad de registros que cumplen el filtro o sumar los valores de un campo numérico para esos registros.
     El filtro es de tipo "contiene" y no distingue mayúsculas de minúsculas.
-	
+    
 .PARAMETER -a, --archivo
     Especifica el archivo CSV de entrada. Este parámetro es obligatorio.
 
@@ -40,17 +40,17 @@
     Indica que se desea sumar los valores de un campo numérico para los registros que cumplen el filtro. Requiere especificar el campo a sumar. No se puede usar junto con -c.
 
 .EXAMPLE
-		./procesarCSV.ps1 -a censo.csv -c
-		Cuenta la cantidad total de registros en el archivo censo.csv.
+        ./procesarCSV.ps1 -a censo.csv -c
+        Cuenta la cantidad total de registros en el archivo censo.csv.
 
 .EXAMPLE
-		./procesarCSV.ps1 -a censo.csv -f Ciudad -b "San" -c
-		Cuenta la cantidad de registros donde el campo Ciudad contiene "San".
+        ./procesarCSV.ps1 -a censo.csv -f Ciudad -b "San" -c
+        Cuenta la cantidad de registros donde el campo Ciudad contiene "San".
 
 .EXAMPLE
-		./procesarCSV.ps1 -a clientes.csv -f Apellido -b "Perez" -s Saldo
-		Suma el campo Saldo para los registros donde el campo Apellido contiene "Perez".
-	
+        ./procesarCSV.ps1 -a clientes.csv -f Apellido -b "Perez" -s Saldo
+        Suma el campo Saldo para los registros donde el campo Apellido contiene "Perez".
+    
 #>
 
 [CmdletBinding(PositionalBinding=$false)]
@@ -98,7 +98,7 @@ function Mostrar-Resultados {
     Write-Host "-----------------------------" -ForegroundColor Cyan
 
     if ($Filtro) {
-        Write-Host "Filtro aplicado: '$Filtro' = '$Buscar'"
+        Write-Host "Filtro aplicado: '$Filtro' contiene '$Buscar'"
     }
     else {
         Write-Host "Filtro aplicado: ninguno"
@@ -202,11 +202,11 @@ $error_flag = $false
 foreach ($row in $data) {
 
     if ($filtro) {
-		$valorCampo = $row.$filtro
-		if (-not ($valorCampo -eq $buscar)) {
-			continue
-		}
-}
+        $valorCampo = $row.$filtro
+        if ($valorCampo -notlike "*$buscar*") {
+            continue
+        }
+    }
 
     if ($contar) {
         $c++
